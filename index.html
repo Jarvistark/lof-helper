@@ -400,15 +400,24 @@ function fillSubAmt(){
 }
 
 function doFetch(){
-  const fc=document.getElementById('rFund')?.value;if(!fc){showToast('请先选择基金');return}
+  var fc=document.getElementById('rFund')?.value;
+  if(!fc){showToast('请先选择基金');return}
   showToast('获取中...');
-  fetchRTNav(fc).then(d=>{
-    const inp=document.getElementById('rNav');if(!inp)return;
+  fetchHistNav(fc,today()).then(function(d){
+    var inp=document.getElementById('rNav');if(!inp)return;
     inp.value=d.nav.toFixed(4);
-    showToast(`净值 ¥${d.nav.toFixed(4)}${d.est?' [估算]':''} (${d.date})`);
-    if(recMode==='premium')fillSubAmt();onRecIn();
-  }).catch(()=>showToast('获取失败，请手动输入'));
+    showToast('净值 ¥'+d.nav.toFixed(4)+' ('+d.date+' 实际净值)');
+    if(recMode==='premium')fillSubAmt();onRecIn()
+  }).catch(function(){
+    fetchRTNav(fc).then(function(d){
+      var inp=document.getElementById('rNav');if(!inp)return;
+      inp.value=d.nav.toFixed(4);
+      showToast('净值 ¥'+d.nav.toFixed(4)+' ('+d.est?'估算':'实际'+')');
+      if(recMode==='premium')fillSubAmt();onRecIn()
+    }).catch(function(){showToast('获取失败，请手动输入')})
+  })
 }
+
 
 function doFetchHist(){
   var fc=document.getElementById('rFund')?.value;
