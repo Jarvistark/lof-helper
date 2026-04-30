@@ -127,7 +127,7 @@ select.rf-in{appearance:none;-webkit-appearance:none;background-image:url("data:
 <body>
 <div class="app">
   <div class="header">
-    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v5.8</span></div></div>
+    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v5.9</span></div></div>
     <div class="summary-bar" id="sumBar"></div>
   </div>
   <nav class="tab-bar" id="tabBar">
@@ -370,9 +370,12 @@ function onRecChg(){
 
 function onRecIn(){
   var _ns=document.getElementById('navStatus');if(_ns)_ns.innerHTML='';
-  const fc=document.getElementById('rFund')?.value,ac=document.getElementById('rAcc')?.value;
+  const fc=document.getElementById('rFund')?.value;
   const f=getFund(fc);const pv=document.getElementById('rPreview');if(!pv||!f)return;
-  const a=avail(fc,ac);const cr=commRate();
+  const accs=getSelectedAccs();
+  var a=0;
+  for(var ai=0;ai<accs.length;ai++)a+=avail(fc,accs[ai]);
+  const cr=commRate();
   if(recMode==='discount'){
     const bp=parseFloat(document.getElementById('rBP')?.value);
     const bs=parseFloat(document.getElementById('rBS')?.value);
@@ -409,6 +412,7 @@ function onRecIn(){
     h+=`</div>`;pv.innerHTML=h;
   }
 }
+
 
 function fillSubAmt(){
   const sp=parseFloat(document.getElementById('rSP')?.value);
