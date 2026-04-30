@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#08090d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>LOF 套利助手</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700&family=DM+Mono:wght@400;500&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08090d;--s1:#12141c;--s2:#1a1d28;--s3:#222636;
+  --bd:#252836;--bdL:#2f3346;
+  --accent:#f59e0b;--accentD:#78500a;--accentG:rgba(245,158,11,.12);
+  --red:#ef4444;--redBg:rgba(239,68,68,.08);
+  --green:#10b981;--greenD:#065f46;--greenBg:rgba(16,185,129,.1);
+  --orange:#f97316;
+  --txt:#e8e6e3;--txt2:#b0aeb8;--mut:#5c5e6a;
+  --fD:'Syne',sans-serif;--fM:'DM Mono',monospace;--fB:'Lora',serif;
+  --r:12px;--rs:8px;--rx:6px;
+}
+html{font-size:14px;-webkit-tap-highlight-color:transparent}
+body{font-family:var(--fB);color:var(--txt);background:var(--bg);min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse at 15% 0%,rgba(245,158,11,.03) 0%,transparent 50%),radial-gradient(ellipse at 85% 100%,rgba(16,185,129,.025) 0%,transparent 50%)}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
+input,select,textarea,button{font-family:inherit;font-size:inherit;color:inherit;border:none;outline:none;background:none}
+.app{position:relative;z-index:1;max-width:480px;margin:0 auto;padding-bottom:70px}
+
+.header{padding:16px 18px 0;position:sticky;top:0;z-index:100;background:linear-gradient(var(--bg) 80%,transparent);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.app-title{font-family:var(--fD);font-size:1.2rem;font-weight:700;letter-spacing:-.02em}
+.app-title span{color:var(--accent)}
+.header-date{font-family:var(--fM);font-size:.68rem;color:var(--mut)}
+.summary-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.s-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 8px;text-align:center;animation:fadeUp .4s ease both}
+.s-card:nth-child(2){animation-delay:.06s}.s-card:nth-child(3){animation-delay:.12s}
+.s-val{font-family:var(--fM);font-size:1.05rem;font-weight:500;line-height:1.2}
+.s-val.up{color:var(--red)}.s-val.dn{color:var(--green)}.s-val.a{color:var(--accent)}
+.s-lbl{font-family:var(--fM);font-size:.56rem;color:var(--mut);letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
+
+.tab-bar{display:flex;padding:14px 18px 0;border-bottom:1px solid var(--bd)}
+.tab{font-family:var(--fM);font-size:.74rem;font-weight:500;color:var(--mut);padding:8px 12px 10px;cursor:pointer;position:relative;transition:color .2s}
+.tab.active{color:var(--accent)}
+.tab.active::after{content:'';position:absolute;bottom:-1px;left:12px;right:12px;height:2px;background:var(--accent);border-radius:2px 2px 0 0}
+
+.content{padding:14px 18px}
+.panel{display:none}.panel.active{display:block}
+
+/* FUND CARD */
+.fc{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:16px;margin-bottom:14px;animation:fadeUp .4s ease both}
+.fc:nth-child(2){animation-delay:.08s}.fc:nth-child(3){animation-delay:.16s}
+.fc-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.fc-code{font-family:var(--fM);font-size:.68rem;color:var(--accent);letter-spacing:.04em}
+.fc-name{font-size:.88rem;font-weight:500;margin-top:1px}
+.fc-tag{font-family:var(--fM);font-size:.58rem;padding:3px 7px;border-radius:4px;background:var(--greenBg);color:var(--green);white-space:nowrap}
+.fc-row{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+.fc-avail{font-family:var(--fM);font-size:1.8rem;font-weight:500;color:var(--green);line-height:1}
+.fc-avail-l{font-family:var(--fM);font-size:.62rem;color:var(--mut)}
+.fc-pnl{font-family:var(--fM);font-size:.95rem;font-weight:500;margin-left:auto}
+.fc-pnl.up{color:var(--red)}.fc-pnl.dn{color:var(--green)}.fc-pnl.zero{color:var(--mut)}
+.fc-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:10px 0;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);margin-bottom:10px}
+.fc-st{text-align:center}.fc-st-v{font-family:var(--fM);font-size:.82rem;font-weight:500}.fc-st-l{font-family:var(--fM);font-size:.54rem;color:var(--mut);letter-spacing:.04em;margin-top:1px}
+.fc-tl{margin-bottom:10px}.fc-tl-t{font-family:var(--fM);font-size:.58rem;color:var(--mut);letter-spacing:.06em;margin-bottom:6px;text-transform:uppercase}
+.fc-tl-r{display:flex;align-items:center;gap:8px;padding:4px 0;font-family:var(--fM);font-size:.72rem}
+.fc-tl-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.fc-tl-date{color:var(--txt2);min-width:50px}.fc-tl-sh{color:var(--txt);font-weight:500}.fc-tl-d{color:var(--mut);margin-left:auto;font-size:.62rem}
+.fc-accs{margin-bottom:12px}.fc-acc-r{display:flex;justify-content:space-between;font-family:var(--fM);font-size:.7rem;padding:3px 0;color:var(--txt2)}
+.fc-acc-av{color:var(--green);font-weight:500}
+.fc-btns{display:flex;gap:8px}
+.fc-btn{flex:1;font-family:var(--fM);font-size:.7rem;font-weight:500;padding:8px 0;border:1px solid var(--bd);border-radius:var(--rx);color:var(--txt2);cursor:pointer;text-align:center;transition:all .2s}
+.fc-btn:active{background:var(--s2)}
+.fc-btn.pri{background:var(--accentG);border-color:rgba(245,158,11,.25);color:var(--accent)}
+
+/* FORM */
+.rf-s{margin-bottom:16px}
+.rf-l{font-family:var(--fM);font-size:.6rem;color:var(--mut);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;display:block}
+.rf-in{width:100%;padding:11px 13px;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rs);font-family:var(--fM);font-size:.85rem;color:var(--txt);transition:border-color .2s}
+.rf-in:focus{border-color:var(--accent)}
+.rf-in::placeholder{color:var(--mut)}
+select.rf-in{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%235c5e6a'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px}
+.rf-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rf-hint{font-family:var(--fM);font-size:.65rem;margin-top:4px}
+.rf-hint.ok{color:var(--green)}.rf-hint.warn{color:var(--orange)}.rf-hint.err{color:var(--red)}
+.rf-hint.link{color:var(--accent);cursor:pointer}
+.rf-mode{display:flex;gap:0;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rs);overflow:hidden}
+.rf-mode-btn{flex:1;font-family:var(--fM);font-size:.7rem;padding:9px 0;text-align:center;cursor:pointer;color:var(--mut);transition:all .2s}
+.rf-mode-btn.active{background:var(--accentG);color:var(--accent);font-weight:500}
+.rf-fetch{font-family:var(--fM);font-size:.65rem;color:var(--accent);cursor:pointer;display:inline-block;margin-left:4px}
+
+.preview-box{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:14px;margin-top:16px}
+.pr-r{display:flex;justify-content:space-between;font-family:var(--fM);font-size:.72rem;padding:3px 0}
+.pr-r .lb{color:var(--mut)}.pr-r .vl{color:var(--txt);font-weight:500}
+.pr-r.total{border-top:1px solid var(--bd);margin-top:4px;padding-top:8px}
+.pr-r.total .vl{font-size:.88rem}
+.pr-r.total .vl.up{color:var(--red)}.pr-r.total .vl.dn{color:var(--green)}
+.pr-disc{font-family:var(--fM);font-size:.65rem;margin-top:8px;padding:6px 8px;border-radius:var(--rx);background:var(--accentG);color:var(--accent)}
+
+.rf-submit{width:100%;padding:14px;border-radius:var(--rs);font-family:var(--fM);font-size:.85rem;font-weight:500;cursor:pointer;margin-top:16px;transition:all .2s;letter-spacing:.03em}
+.rf-submit.primary{background:var(--accent);color:var(--bg)}
+.rf-submit.primary:active{background:#e88a0a}
+.rf-submit.secondary{background:var(--s2);border:1px solid var(--bd);color:var(--txt2);margin-top:8px}
+
+/* HISTORY */
+.h-filter{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.h-filter::-webkit-scrollbar{display:none}
+.h-chip{font-family:var(--fM);font-size:.65rem;padding:6px 10px;border:1px solid var(--bd);border-radius:20px;color:var(--mut);white-space:nowrap;cursor:pointer;transition:all .2s;flex-shrink:0}
+.h-chip.active{border-color:var(--accent);color:var(--accent);background:var(--accentG)}
+.h-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--rs);padding:12px 14px;margin-bottom:10px;animation:fadeUp .3s ease both}
+.h-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.h-fund{font-size:.82rem;font-weight:500}
+.h-tag{font-family:var(--fM);font-size:.52rem;padding:2px 5px;border-radius:3px;margin-left:6px}
+.h-tag.disc{background:rgba(245,158,11,.15);color:var(--accent)}
+.h-tag.prem{background:rgba(16,185,129,.15);color:var(--green)}
+.h-pnl{font-family:var(--fM);font-size:.88rem;font-weight:500}
+.h-pnl.up{color:var(--red)}.h-pnl.dn{color:var(--green)}.h-pnl.na{color:var(--mut)}
+.h-row{display:flex;justify-content:space-between;font-family:var(--fM);font-size:.65rem;color:var(--mut);padding:2px 0}
+.h-row span:last-child{color:var(--txt2)}
+.h-acts{display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--bd)}
+.h-act{font-family:var(--fM);font-size:.62rem;padding:5px 10px;border:1px solid var(--bd);border-radius:var(--rx);color:var(--mut);cursor:pointer}
+.h-act:active{background:var(--s2)}.h-act.danger{color:var(--red);border-color:rgba(239,68,68,.2)}
+
+/* SETTINGS */
+.sg-t{font-family:var(--fM);font-size:.6rem;color:var(--mut);letter-spacing:.1em;text-transform:uppercase;margin:18px 0 10px}
+.sg-t:first-child{margin-top:0}
+.sg-item{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rs);margin-bottom:8px}
+.sg-info{flex:1}.sg-name{font-size:.85rem;font-weight:500}.sg-sub{font-family:var(--fM);font-size:.62rem;color:var(--mut);margin-top:1px}
+.sg-acts{display:flex;gap:6px}
+.sg-a{font-family:var(--fM);font-size:.62rem;padding:5px 10px;border:1px solid var(--bd);border-radius:var(--rx);color:var(--mut);cursor:pointer}
+.sg-a:active{background:var(--s2)}.sg-a.danger{color:var(--red);border-color:rgba(239,68,68,.2)}
+.sg-add{width:100%;padding:10px;border:1px dashed var(--bd);border-radius:var(--rs);font-family:var(--fM);font-size:.72rem;color:var(--mut);cursor:pointer;text-align:center;margin-bottom:8px;transition:all .2s}
+.sg-add:active{border-color:var(--accent);color:var(--accent)}
+.sg-db{display:flex;gap:8px;margin-top:8px}
+.sg-db button{flex:1;padding:10px;border:1px solid var(--bd);border-radius:var(--rs);font-family:var(--fM);font-size:.72rem;color:var(--txt2);cursor:pointer;text-align:center}
+
+/* STATS */
+.st-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.st-box{background:var(--s1);border:1px solid var(--bd);border-radius:var(--rs);padding:14px}
+.st-box-l{font-family:var(--fM);font-size:.56rem;color:var(--mut);letter-spacing:.06em;text-transform:uppercase}
+.st-box-v{font-family:var(--fM);font-size:1.05rem;font-weight:500;margin-top:3px}
+.st-box-s{font-family:var(--fM);font-size:.58rem;color:var(--mut);margin-top:2px}
+.st-title{font-family:var(--fM);font-size:.6rem;color:var(--mut);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+
+/* MODAL */
+.mo{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:none;align-items:flex-end;justify-content:center}
+.mo.show{display:flex}
+.mo-body{width:100%;max-width:480px;max-height:92vh;overflow-y:auto;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r) var(--r) 0 0;padding:0 18px 28px;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1)}
+.mo.show .mo-body{transform:translateY(0)}
+.mo-handle{width:36px;height:4px;background:var(--bdL);border-radius:2px;margin:10px auto 16px}
+.mo-title{font-family:var(--fD);font-size:1.05rem;font-weight:700;margin-bottom:16px}
+
+.cfm{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center}
+.cfm.show{display:flex}
+.cfm-box{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:22px;width:calc(100% - 48px);max-width:320px;text-align:center}
+.cfm-msg{font-size:.88rem;margin-bottom:18px;line-height:1.5}
+.cfm-btns{display:flex;gap:10px}
+.cfm-btns button{flex:1;padding:10px;border-radius:var(--rs);font-family:var(--fM);font-size:.78rem;font-weight:500;cursor:pointer}
+.cfm-btns .cb-n{background:var(--s2);border:1px solid var(--bd);color:var(--txt2)}
+.cfm-btns .cb-y{background:var(--accent);color:var(--bg)}
+
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-80px);font-family:var(--fM);font-size:.75rem;background:var(--s2);border:1px solid var(--bd);padding:9px 18px;border-radius:var(--rs);z-index:500;transition:transform .3s cubic-bezier(.4,0,.2,1);white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+.empty{text-align:center;padding:50px 20px;animation:fadeUp .4s ease .1s both}
+.empty-i{font-size:2rem;opacity:.25;margin-bottom:12px}
+.empty-t{font-size:.92rem;color:var(--txt2);margin-bottom:6px}
+.empty-d{font-family:var(--fM);font-size:.68rem;color:var(--mut);line-height:1.6}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-top">
+      <div class="app-title">LOF <span>套利</span></div>
+      <div class="header-date" id="hDate"></div>
+    </div>
+    <div class="summary-bar" id="sumBar"></div>
+  </div>
+  <nav class="tab-bar" id="tabBar">
+    <button class="tab active" data-t="dash">首页</button>
+    <button class="tab" data-t="rec">记账</button>
+    <button class="tab" data-t="hist">明细</button>
+    <button class="tab" data-t="set">设置</button>
+  </nav>
+  <main class="content">
+    <section class="panel active" id="pDash"></section>
+    <section class="panel" id="pRec"></section>
+    <section class="panel" id="pHist"></section>
+    <section class="panel" id="pSet"></section>
+  </main>
+</div>
+<div class="mo" id="mo"><div class="mo-body" id="moBody"></div></div>
+<div class="cfm" id="cfm"><div class="cfm-box"><div class="cfm-msg" id="cfmMsg"></div><div class="cfm-btns"><button class="cb-n" onclick="closeCfm()">取消</button><button class="cb-y" id="cfmOk">确认</button></div></div></div>
+<div class="toast" id="toast"></div>
+<script>
+const SK='lof_v4';
+function ld(){try{const r=localStorage.getItem(SK);return r?JSON.parse(r):df()}catch{return df()}}
+function sv(){localStorage.setItem(SK,JSON.stringify(D))}
+function df(){return{funds:[],accounts:[],initPos:[],txs:[]}}
+function gid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+let D=ld();
+
+function today(){return new Date().toISOString().slice(0,10)}
+function nowH(){const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
+function addD(s,n){const d=new Date(s+'T00:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)}
+function diffD(a,b){return Math.floor((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/864e5)}
+function fmtD(s){if(!s)return'-';const[y,m,d]=s.split('-');return`${y}.${m}.${d}`}
+function fmtM(n){return Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
+function fmtI(n){return Math.round(n).toLocaleString('en-US')}
+function pnlCls(v){return v>0?'up':v<0?'dn':'zero'}
+function pnlSign(v){return v>0?'+':''}
+
+function fetchNav(code){
+  return new Promise((res,rej)=>{
+    const t=setTimeout(()=>{window.jsonpgz=null;rej()},8000);
+    window.jsonpgz=d=>{clearTimeout(t);window.jsonpgz=null;res(d)};
+    const s=document.createElement('script');
+    s.src=`https://fundgz.1234567.com.cn/js/${code}.js?rt=${Date.now()}`;
+    s.onerror=()=>{clearTimeout(t);window.jsonpgz=null;s.remove();rej()};
+    s.onload=()=>s.remove();
+    document.head.appendChild(s);
+  })
+}
+
+function getFund(c){return D.funds.find(f=>f.code===c)}
+function getAcc(id){return D.accounts.find(a=>a.id===id)}
+function getInit(fc,ac){const p=D.initPos.find(p=>p.fundCode===fc&&p.accountId===ac);return p?p.shares:0}
+
+function sharesFromSub(tx){
+  const f=getFund(tx.fundCode);
+  if(!f||!tx.subscribeNav||tx.subscribeNav<=0||!tx.subscribeAmount)return 0;
+  return tx.subscribeAmount/((1+f.subFeeRate)*tx.subscribeNav);
+}
+
+function totalPos(fc,ac){
+  const init=getInit(fc,ac);
+  const delta=D.txs.filter(t=>t.fundCode===fc&&t.accountId===ac).reduce((s,t)=>{
+    if(t.mode==='discount')return s+t.buyShares-t.redeemShares;
+    return s+sharesFromSub(t)-t.sellShares;
+  },0);
+  return init+delta;
+}
+
+function lockedShares(fc,ac){
+  const f=getFund(fc);if(!f)return 0;
+  const td=today();
+  return D.txs.filter(t=>t.fundCode===fc&&t.accountId===ac)
+    .filter(t=>addD(t.date,f.holdDays)>td)
+    .reduce((s,t)=>{
+      if(t.mode==='discount')return s+t.buyShares;
+      return s+sharesFromSub(t);
+    },0);
+}
+
+function avail(fc,ac){return Math.max(0,totalPos(fc,ac)-lockedShares(fc,ac))}
+function totalAll(fc){return D.accounts.reduce((s,a)=>s+totalPos(fc,a.id),0)}
+function lockedAll(fc){return D.accounts.reduce((s,a)=>s+lockedShares(fc,a.id),0)}
+function availAll(fc){return D.accounts.reduce((s,a)=>s+avail(fc,a.id),0)}
+
+function unlockTL(fc){
+  const f=getFund(fc);if(!f)return[];
+  const td=today();const m={};
+  D.txs.filter(t=>t.fundCode===fc).forEach(t=>{
+    let sh=t.mode==='discount'?t.buyShares:sharesFromSub(t);
+    const ud=addD(t.date,f.holdDays);
+    if(ud>td&&sh>0)m[ud]=(m[ud]||0)+sh;
+  });
+  return Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0])).map(([d,s])=>({date:d,shares:s,days:diffD(td,d)}));
+}
+
+function calcPnL(tx){
+  const f=getFund(tx.fundCode);if(!f)return null;
+  if(tx.mode==='discount'){
+    if(!tx.redeemNav||tx.redeemNav<=0)return null;
+    return tx.redeemShares*tx.redeemNav*(1-f.redeemFeeRate)-tx.buyShares*tx.buyPrice;
+  }
+  if(!tx.subscribeNav||tx.subscribeNav<=0)return null;
+  const sp=tx.sellPrice*tx.sellShares;
+  const net=tx.subscribeAmount/(1+f.subFeeRate);
+  const sh=net/tx.subscribeNav;
+  const ref=net*(f.subFeeRate-f.subActualFeeRate);
+  return sp-tx.subscribeAmount+ref+(sh-tx.sellShares)*tx.subscribeNav;
+}
+
+function fundPnL(fc){
+  return D.txs.filter(t=>t.fundCode===fc).reduce((s,t)=>{const p=calcPnL(t);return s+(p||0)},0);
+}
+
+function activeFunds(){
+  const fc=new Set();
+  D.txs.forEach(t=>fc.add(t.fundCode));
+  D.initPos.forEach(p=>{if(p.shares>0)fc.add(p.fundCode)});
+  return D.funds.filter(f=>fc.has(f.code));
+}
+
+// ===== RENDER =====
+function render(){rDate();rSum();rDash();rRec();rHist();rSet()}
+
+function rDate(){document.getElementById('hDate').textContent=(()=>{const[t]=today().split('');const d=new Date(today()+'T00:00:00');const w=['日','一','二','三','四','五','六'][d.getDay()];const[y,m,dd]=today().split('-');return`${y}年${+m}月${+dd}日 周${w}`})()}
+
+function rSum(){
+  const fs=activeFunds();
+  let tp=0,ta=0,ttl=0;
+  fs.forEach(f=>{tp+=fundPnL(f.code);ta+=availAll(f.code);ttl+=totalAll(f.code)});
+  const cls=tp>0?'up':tp<0?'dn':'a';
+  document.getElementById('sumBar').innerHTML=`
+    <div class="s-card"><div class="s-val">${fmtI(ttl)}</div><div class="s-lbl">总持仓</div></div>
+    <div class="s-card"><div class="s-val a">${fmtI(ta)}</div><div class="s-lbl">可操作</div></div>
+    <div class="s-card"><div class="s-val ${cls}">${pnlSign(tp)}¥${fmtM(tp)}</div><div class="s-lbl">累计收益</div></div>`;
+}
+
+function rDash(){
+  const el=document.getElementById('pDash');
+  const fs=activeFunds();
+  if(!fs.length){el.innerHTML=`<div class="empty"><div class="empty-i">📊</div><div class="empty-t">还没有数据</div><div class="empty-d">去「设置」添加基金和账户<br>然后录入初始持仓即可开始</div></div>`;return}
+  el.innerHTML=fs.map(f=>{
+    const av=availAll(f.code),ttl=totalAll(f.code),lk=lockedAll(f.code),pnl=fundPnL(f.code);
+    const tl=unlockTL(f.code);
+    const accR=D.accounts.filter(a=>totalPos(f.code,a.id)>0).map(a=>`<div class="fc-acc-r"><span>${a.name} ${fmtI(totalPos(f.code,a.id))}份</span><span class="fc-acc-av">可用 ${fmtI(avail(f.code,a.id))}</span></div>`).join('');
+    const tlR=tl.slice(0,4).map(t=>`<div class="fc-tl-r"><span class="fc-tl-dot"></span><span class="fc-tl-date">${fmtD(t.date)}</span><span class="fc-tl-sh">${fmtI(t.shares)} 份</span><span class="fc-tl-d">${t.days}天后</span></div>`).join('');
+    const pc=pnlCls(pnl);
+    return`<div class="fc">
+      <div class="fc-hd"><div><div class="fc-code">${f.code}</div><div class="fc-name">${f.name}</div></div><div class="fc-tag">${f.holdDays}天 · ${(f.redeemFeeRate*100).toFixed(1)}%</div></div>
+      <div class="fc-row"><span class="fc-avail">${fmtI(av)}</span><span class="fc-avail-l">可操作份额</span><span class="fc-pnl ${pc}">${pnl!==0?pnlSign(pnl)+'¥'+fmtM(pnl):'累计 ¥0.00'}</span></div>
+      <div class="fc-stats"><div class="fc-st"><div class="fc-st-v">${fmtI(ttl)}</div><div class="fc-st-l">总持仓</div></div><div class="fc-st"><div class="fc-st-v" style="color:var(--orange)">${fmtI(lk)}</div><div class="fc-st-l">锁定</div></div><div class="fc-st"><div class="fc-st-v">${D.accounts.filter(a=>totalPos(f.code,a.id)>0).length}</div><div class="fc-st-l">账户</div></div></div>
+      ${tlR?`<div class="fc-tl"><div class="fc-tl-t">解锁时间线</div>${tlR}${tl.length>4?`<div class="fc-tl-r" style="color:var(--mut);font-size:.6rem">还有 ${tl.length-4} 批...</div>`:''}</div>`:''}
+      ${accR?`<div class="fc-accs">${accR}</div>`:''}
+      <div class="fc-btns"><button class="fc-btn pri" onclick="goRec('${f.code}','discount')">折价记账</button><button class="fc-btn" onclick="goRec('${f.code}','premium')">溢价记账</button></div>
+    </div>`}).join('');
+}
+
+function goRec(c,m){document.querySelector('[data-t="rec"]').click();setTimeout(()=>{recMode=m;renderRec();const sel=document.getElementById('rFund');if(sel){sel.value=c;sel.dispatchEvent(new Event('change'))}},50)}
+
+let recMode='discount';
+function rRec(){
+  const el=document.getElementById('pRec');
+  if(!D.funds.length){el.innerHTML=`<div class="empty"><div class="empty-i">✏️</div><div class="empty-t">请先添加基金</div><div class="empty-d">去「设置」添加基金和账户后<br>即可开始记录操作</div></div>`;return}
+  const fOpts=D.funds.map(f=>`<option value="${f.code}">${f.code} ${f.name}</option>`).join('');
+  const aOpts=D.accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+  const isD=recMode==='discount';
+  el.innerHTML=`
+    <div class="rf-s"><span class="rf-l">操作模式</span>
+      <div class="rf-mode"><div class="rf-mode-btn ${isD?'active':''}" onclick="setRecMode('discount')">折价套利（买+赎）</div><div class="rf-mode-btn ${!isD?'active':''}" onclick="setRecMode('premium')">溢价套利（卖+申）</div></div>
+    </div>
+    <div class="rf-row"><div class="rf-s"><span class="rf-l">基金</span><select class="rf-in" id="rFund" onchange="onRecChg()">${fOpts}</select></div><div class="rf-s"><span class="rf-l">账户</span><select class="rf-in" id="rAcc" onchange="onRecChg()">${aOpts}</select></div></div>
+    <div id="rAvail"></div>
+    <div class="rf-row"><div class="rf-s"><span class="rf-l">日期</span><input class="rf-in" type="date" id="rDate" value="${today()}"></div><div class="rf-s"><span class="rf-l">时间</span><input class="rf-in" type="time" id="rTime" value="${nowH()}"></div></div>
+    ${isD?`
+      <div class="rf-s"><span class="rf-l">买入价格（场内）</span><input class="rf-in" id="rBP" placeholder="如 2.1250" inputmode="decimal" step="0.0001" oninput="onRecIn()"></div>
+      <div class="rf-s"><span class="rf-l">买入份额</span><input class="rf-in" id="rBS" placeholder="如 10000" inputmode="numeric" oninput="onRecIn()"></div>
+      <div class="rf-s"><span class="rf-l">赎回份额</span><input class="rf-in" id="rRS" placeholder="默认同买入" inputmode="numeric" oninput="onRecIn()"></div>
+      <div class="rf-s"><span class="rf-l">基金净值 <span class="rf-fetch" onclick="doFetch()">[ 获取净值 ]</span></span><input class="rf-in" id="rNav" placeholder="盘后自动获取或手动输入" inputmode="decimal" step="0.0001" oninput="onRecIn()"></div>
+    `:`
+      <div class="rf-s"><span class="rf-l">卖出价格（场内）</span><input class="rf-in" id="rSP" placeholder="如 2.2000" inputmode="decimal" step="0.0001" oninput="onRecIn()"></div>
+      <div class="rf-s"><span class="rf-l">卖出份额</span><input class="rf-in" id="rSS" placeholder="如 10000" inputmode="numeric" oninput="onRecIn()"></div>
+      <div class="rf-s"><span class="rf-l">申购金额 <span class="rf-fetch" onclick="fillSubAmt()">[ 计算建议 ]</span></span><input class="rf-in" id="rSub" placeholder="自动计算或手动输入" inputmode="decimal" step="0.01" oninput="onRecIn()"></div>
+      <div class="rf-s"><span class="rf-l">基金净值 <span class="rf-fetch" onclick="doFetch()">[ 获取净值 ]</span></span><input class="rf-in" id="rNav" placeholder="盘后自动获取或手动输入" inputmode="decimal" step="0.0001" oninput="onRecIn()"></div>
+    `}
+    <div class="rf-s"><span class="rf-l">备注</span><input class="rf-in" id="rNote" placeholder="选填"></div>
+    <div id="rPreview"></div>
+    <button class="rf-submit primary" onclick="submitTx()">确认记录</button>`;
+  onRecChg();
+}
+
+function setRecMode(m){recMode=m;rRec()}
+
+function onRecChg(){
+  const fc=document.getElementById('rFund')?.value,ac=document.getElementById('rAcc')?.value;
+  const h=document.getElementById('rAvail');if(!fc||!ac||!h)return;
+  const a=avail(fc,ac),t=totalPos(fc,ac);
+  h.innerHTML=`<div class="rf-hint ${a===0?'err':'ok'}">可用 ${fmtI(a)} 份 / 总持仓 ${fmtI(t)} 份</div>`;
+  onRecIn();
+}
+
+function onRecIn(){
+  const fc=document.getElementById('rFund')?.value,ac=document.getElementById('rAcc')?.value;
+  const f=getFund(fc);const pv=document.getElementById('rPreview');if(!pv||!f)return;
+  const a=avail(fc,ac);
+  if(recMode==='discount'){
+    const bp=parseFloat(document.getElementById('rBP')?.value);
+    const bs=parseFloat(document.getElementById('rBS')?.value);
+    const rs=parseFloat(document.getElementById('rRS')?.value)||bs;
+    const nav=parseFloat(document.getElementById('rNav')?.value);
+    if(!bp||!bs){pv.innerHTML='';return}
+    let h=`<div class="preview-box"><div class="pr-r"><span class="lb">买入金额</span><span class="vl">¥${fmtM(bp*bs)}</span></div>`;
+    if(nav>0){
+      const amt=rs*nav,fee=amt*f.redeemFeeRate,cost=bs*bp,pnl=amt-fee-cost;
+      h+=`<div class="pr-r"><span class="lb">赎回金额</span><span class="vl">¥${fmtM(amt)}</span></div>`;
+      h+=`<div class="pr-r"><span class="lb">赎回费(${(f.redeemFeeRate*100).toFixed(1)}%)</span><span class="vl" style="color:var(--orange)">-¥${fmtM(fee)}</span></div>`;
+      h+=`<div class="pr-r total"><span class="lb">净收益</span><span class="vl ${pnlCls(pnl)}">${pnlSign(pnl)}¥${fmtM(pnl)}</span></div>`;
+      const disc=((nav-bp)/nav*100);
+      h+=`<div class="pr-disc">折价率 ${disc.toFixed(2)}% · 净值 ¥${nav.toFixed(4)}</div>`;
+    }
+    if(rs>a)h+=`<div style="font-family:var(--fM);font-size:.65rem;color:var(--red);margin-top:8px">⚠ 赎回份额超过可用量（可用 ${fmtI(a)}）</div>`;
+    h+=`</div>`;pv.innerHTML=h;
+  }else{
+    const sp=parseFloat(document.getElementById('rSP')?.value);
+    const ss=parseFloat(document.getElementById('rSS')?.value);
+    const sub=parseFloat(document.getElementById('rSub')?.value);
+    const nav=parseFloat(document.getElementById('rNav')?.value);
+    if(!sp||!ss){pv.innerHTML='';return}
+    let h=`<div class="preview-box"><div class="pr-r"><span class="lb">卖出收入</span><span class="vl">¥${fmtM(sp*ss)}</span></div>`;
+    if(sub>0)h+=`<div class="pr-r"><span class="lb">申购金额</span><span class="vl">¥${fmtM(sub)}</span></div>`;
+    if(sub>0&&nav>0){
+      const net=sub/(1+f.subFeeRate),sh=net/nav,ref=net*(f.subFeeRate-f.subActualFeeRate),extra=sh-ss;
+      const pnl=sp*ss-sub+ref+extra*nav;
+      h+=`<div class="pr-r"><span class="lb">获得份额</span><span class="vl">${fmtI(sh)} 份</span></div>`;
+      h+=`<div class="pr-r"><span class="lb">额外份额</span><span class="vl" style="color:var(--red)">+${fmtI(extra)} 份</span></div>`;
+      h+=`<div class="pr-r"><span class="lb">预计退款</span><span class="vl">¥${fmtM(ref)}</span></div>`;
+      h+=`<div class="pr-r total"><span class="lb">净收益</span><span class="vl ${pnlCls(pnl)}">${pnlSign(pnl)}¥${fmtM(pnl)}</span></div>`;
+      const prem=((sp-nav)/nav*100);
+      h+=`<div class="pr-disc">溢价率 ${prem.toFixed(2)}% · 净值 ¥${nav.toFixed(4)}</div>`;
+    }
+    if(ss>a)h+=`<div style="font-family:var(--fM);font-size:.65rem;color:var(--red);margin-top:8px">⚠ 卖出份额超过可用量（可用 ${fmtI(a)}）</div>`;
+    h+=`</div>`;pv.innerHTML=h;
+  }
+}
+
+function fillSubAmt(){
+  const sp=parseFloat(document.getElementById('rSP')?.value);
+  const ss=parseFloat(document.getElementById('rSS')?.value);
+  const fc=document.getElementById('rFund')?.value;const f=getFund(fc);
+  if(!sp||!ss||!f){showToast('请先输入卖出价格和份额');return}
+  const factor=1+(f.subFeeRate-f.subActualFeeRate);
+  const amt=Math.round(sp*ss*factor*100)/100;
+  document.getElementById('rSub').value=amt;
+  showToast(`建议申购 ¥${fmtM(amt)}`);
+  onRecIn();
+}
+
+function doFetch(){
+  const fc=document.getElementById('rFund')?.value;
+  if(!fc){showToast('请先选择基金');return}
+  showToast('获取中...');
+  fetchNav(fc).then(d=>{
+    const inp=document.getElementById('rNav');if(!inp)return;
+    const g=parseFloat(d.gsz),j=parseFloat(d.dwjz);
+    inp.value=g>0?g:j;
+    showToast(`净值 ¥${inp.value} (${d.gztime||d.jzrq||''})`);
+    if(recMode==='premium')fillSubAmt();
+    onRecIn();
+  }).catch(()=>showToast('获取失败，请手动输入'));
+}
+
+function submitTx(){
+  const fc=document.getElementById('rFund')?.value,ac=document.getElementById('rAcc')?.value;
+  const date=document.getElementById('rDate')?.value,time=document.getElementById('rTime')?.value;
+  const note=document.getElementById('rNote')?.value||'';
+  if(!fc||!ac||!date){showToast('请填写必要信息');return}
+  const tx={id:gid(),date,time,fundCode:fc,accountId:ac,mode:recMode,note,
+    buyPrice:0,buyShares:0,redeemShares:0,redeemNav:0,
+    sellPrice:0,sellShares:0,subscribeAmount:0,subscribeNav:0};
+  if(recMode==='discount'){
+    tx.buyPrice=parseFloat(document.getElementById('rBP')?.value)||0;
+    tx.buyShares=parseFloat(document.getElementById('rBS')?.value)||0;
+    tx.redeemShares=parseFloat(document.getElementById('rRS')?.value)||tx.buyShares;
+    tx.redeemNav=parseFloat(document.getElementById('rNav')?.value)||0;
+    if(!tx.buyPrice||!tx.buyShares){showToast('请输入买入价格和份额');return}
+  }else{
+    tx.sellPrice=parseFloat(document.getElementById('rSP')?.value)||0;
+    tx.sellShares=parseFloat(document.getElementById('rSS')?.value)||0;
+    tx.subscribeAmount=parseFloat(document.getElementById('rSub')?.value)||0;
+    tx.subscribeNav=parseFloat(document.getElementById('rNav')?.value)||0;
+    if(!tx.sellPrice||!tx.sellShares){showToast('请输入卖出价格和份额');return}
+    if(tx.sellShares>avail(fc,ac)){showToast('卖出份额超过可用量');return}
+  }
+  D.txs.push(tx);sv();render();showToast('记录成功');
+  // Clear form partially
+  if(recMode==='discount'){['rBP','rBS','rRS','rNav','rNote'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''})}
+  else{['rSP','rSS','rSub','rNav','rNote'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''})}
+  document.getElementById('rPreview').innerHTML='';
+}
+
+let histF='all';
+function rHist(){
+  const el=document.getElementById('pHist');
+  if(!D.txs.length){el.innerHTML=`<div class="empty"><div class="empty-i">📋</div><div class="empty-t">暂无记录</div><div class="empty-d">完成操作后记录将在此显示</div></div>`;return}
+  const chips=[{code:'all',name:'全部'},...D.funds];
+  const ch=chips.map(f=>`<span class="h-chip ${histF===f.code?'active':''}" onclick="histF='${f.code}';rHist()">${f.name||f.code}</span>`).join('');
+  const txs=D.txs.filter(t=>histF==='all'||t.fundCode===histF).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
+  el.innerHTML=`<div class="h-filter">${ch}</div>`+txs.map(t=>{
+    const f=getFund(t.fundCode),a=getAcc(t.accountId);
+    const pnl=calcPnL(t);
+    const tag=t.mode==='discount'?`<span class="h-tag disc">折价</span>`:`<span class="h-tag prem">溢价</span>`;
+    let pnlH=pnl!==null?`<span class="h-pnl ${pnlCls(pnl)}">${pnlSign(pnl)}¥${fmtM(pnl)}</span>`:`<span class="h-pnl na">待净值</span>`;
+    let rows=`<div class="h-row"><span>日期</span><span>${fmtD(t.date)} ${t.time||''} · ${a?a.name:''}</span></div>`;
+    if(t.mode==='discount'){
+      rows+=`<div class="h-row"><span>买入</span><span>¥${t.buyPrice.toFixed(4)} × ${fmtI(t.buyShares)} = ¥${fmtM(t.buyPrice*t.buyShares)}</span></div>`;
+      rows+=`<div class="h-row"><span>赎回</span><span>${t.redeemNav>0?'¥'+t.redeemNav.toFixed(4):'待更新'} × ${fmtI(t.redeemShares)}</span></div>`;
+      if(t.redeemNav>0)rows+=`<div class="h-row"><span>赎回费</span><span>¥${fmtM(t.redeemShares*t.redeemNav*(f?f.redeemFeeRate:0))}</span></div>`;
+    }else{
+      rows+=`<div class="h-row"><span>卖出</span><span>¥${t.sellPrice.toFixed(4)} × ${fmtI(t.sellShares)} = ¥${fmtM(t.sellPrice*t.sellShares)}</span></div>`;
+      rows+=`<div class="h-row"><span>申购</span><span>¥${fmtM(t.subscribeAmount)}</span></div>`;
+      if(t.subscribeNav>0){
+        const sh=sharesFromSub(t);
+        rows+=`<div class="h-row"><span>获得份额</span><span>${fmtI(sh)} 份 (多 ${fmtI(sh-t.sellShares)})</span></div>`;
+      }
+    }
+    if(t.note)rows+=`<div class="h-row"><span>备注</span><span>${t.note}</span></div>`;
+    return`<div class="h-card"><div class="h-top"><div class="h-fund">${t.fundCode} ${f?f.name:''} ${tag}</div>${pnlH}</div>${rows}<div class="h-acts">${(t.mode==='discount'&&!t.redeemNav)||(t.mode==='premium'&&!t.subscribeNav)?`<button class="h-act" onclick="fillNavTx('${t.id}')">填净值</button>`:''}<button class="h-act" onclick="editTx('${t.id}')">编辑</button><button class="h-act danger" onclick="delTx('${t.id}')">删除</button></div></div>`;
+  }).join('');
+}
+
+function fillNavTx(id){
+  const tx=D.txs.find(t=>t.id===id);if(!tx)return;
+  showToast('获取中...');
+  fetchNav(tx.fundCode).then(d=>{
+    const g=parseFloat(d.gsz),j=parseFloat(d.dwjz),v=g>0?g:j;
+    if(tx.mode==='discount')tx.redeemNav=v;else tx.subscribeNav=v;
+    sv();render();showToast(`已填入 ¥${v}`);
+  }).catch(()=>showToast('获取失败'));
+}
+
+function editTx(id){
+  const tx=D.txs.find(t=>t.id===id);if(!tx)return;
+  recMode=tx.mode;
+  document.querySelector('[data-t="rec"]').click();
+  setTimeout(()=>{
+    rRec();
+    document.getElementById('rFund').value=tx.fundCode;
+    document.getElementById('rAcc').value=tx.accountId;
+    document.getElementById('rDate').value=tx.date;
+    document.getElementById('rTime').value=tx.time||'';
+    document.getElementById('rNote').value=tx.note||'';
+    if(tx.mode==='discount'){
+      document.getElementById('rBP').value=tx.buyPrice||'';
+      document.getElementById('rBS').value=tx.buyShares||'';
+      document.getElementById('rRS').value=tx.redeemShares||'';
+      if(tx.redeemNav>0)document.getElementById('rNav').value=tx.redeemNav;
+    }else{
+      document.getElementById('rSP').value=tx.sellPrice||'';
+      document.getElementById('rSS').value=tx.sellShares||'';
+      document.getElementById('rSub').value=tx.subscribeAmount||'';
+      if(tx.subscribeNav>0)document.getElementById('rNav').value=tx.subscribeNav;
+    }
+    onRecChg();
+    D.txs=D.txs.filter(t=>t.id!==id);sv();
+    showToast('已加载，修改后重新提交');
+  },100);
+}
+
+function delTx(id){showCfm('确定删除这条记录？',()=>{D.txs=D.txs.filter(t=>t.id!==id);sv();render();showToast('已删除')})}
+
+function rSet(){
+  const el=document.getElementById('pSet');
+  const fItems=D.funds.map(f=>`<div class="sg-item"><div class="sg-info"><div class="sg-name">${f.code} ${f.name}</div><div class="sg-sub">赎回: 持有${f.holdDays}天 ${(f.redeemFeeRate*100).toFixed(2)}% · 申购: ${(f.subFeeRate*100).toFixed(2)}%→${(f.subActualFeeRate*100).toFixed(2)}%</div></div><div class="sg-acts"><button class="sg-a" onclick="showFundMo('${f.code}')">编辑</button><button class="sg-a danger" onclick="delFund('${f.code}')">删除</button></div></div>`).join('');
+  const aItems=D.accounts.map(a=>`<div class="sg-item"><div class="sg-info"><div class="sg-name">${a.name}</div></div><div class="sg-acts"><button class="sg-a" onclick="showAccMo('${a.id}')">编辑</button><button class="sg-a danger" onclick="delAcc('${a.id}')">删除</button></div></div>`).join('');
+  const pItems=D.initPos.filter(p=>p.shares>0).map(p=>{const fc=getFund(p.fundCode),ac=getAcc(p.accountId);return`<div class="sg-item"><div class="sg-info"><div class="sg-name">${p.fundCode} ${fc?fc.name:''}</div><div class="sg-sub">${ac?ac.name:''} · ${fmtI(p.shares)} 份</div></div><div class="sg-acts"><button class="sg-a" onclick="showIPMo('${p.fundCode}','${p.accountId}')">编辑</button><button class="sg-a danger" onclick="delIP('${p.fundCode}','${p.accountId}')">删除</button></div></div>`}).join('');
+  el.innerHTML=`
+    <div class="sg-t">基金管理</div>${fItems}<button class="sg-add" onclick="showFundMo()">+ 添加基金</button>
+    <div class="sg-t">账户管理</div>${aItems}<button class="sg-add" onclick="showAccMo()">+ 添加账户</button>
+    <div class="sg-t">初始持仓</div>${pItems}<button class="sg-add" onclick="showIPMo()">+ 录入持仓</button>
+    <div class="sg-t">数据管理</div><div class="sg-db"><button onclick="expData()">导出数据</button><button onclick="impData()">导入数据</button></div>`;
+}
+
+// ===== MODALS =====
+function openMo(html){document.getElementById('moBody').innerHTML=`<div class="mo-handle"></div>`+html;document.getElementById('mo').classList.add('show')}
+function closeMo(){document.getElementById('mo').classList.remove('show')}
+document.getElementById('mo').addEventListener('click',e=>{if(e.target.id==='mo')closeMo()});
+
+function showFundMo(code){
+  const f=code?getFund(code):null;
+  openMo(`<div class="mo-title">${f?'编辑基金':'添加基金'}</div>
+    <div class="rf-s"><span class="rf-l">基金代码</span><input class="rf-in" id="mFC" value="${f?f.code:''}" placeholder="如 163417" inputmode="numeric"></div>
+    <div class="rf-s"><span class="rf-l">基金名称</span><input class="rf-in" id="mFN" value="${f?f.name:''}" placeholder="如 兴全合宜"></div>
+    <div class="rf-row"><div class="rf-s"><span class="rf-l">持有天数</span><input class="rf-in" id="mFH" value="${f?f.holdDays:30}" inputmode="numeric"></div><div class="rf-s"><span class="rf-l">赎回费率(%)</span><input class="rf-in" id="mFR" value="${f?(f.redeemFeeRate*100):0.5}" inputmode="decimal"></div></div>
+    <div class="rf-row"><div class="rf-s"><span class="rf-l">申购前端费率(%)</span><input class="rf-in" id="mFSF" value="${f?(f.subFeeRate*100):1.5}" inputmode="decimal"></div><div class="rf-s"><span class="rf-l">申购实际费率(%)</span><input class="rf-in" id="mFSA" value="${f?(f.subActualFeeRate*100):0.15}" inputmode="decimal"></div></div>
+    <button class="rf-submit primary" onclick="saveFund('${code||''}')">保存</button>
+    <button class="rf-submit secondary" onclick="closeMo()">取消</button>`);
+}
+function saveFund(oc){
+  const c=document.getElementById('mFC').value.trim(),n=document.getElementById('mFN').value.trim();
+  const h=parseInt(document.getElementById('mFH').value)||30;
+  const rr=parseFloat(document.getElementById('mFR').value)/100||0.005;
+  const sf=parseFloat(document.getElementById('mFSF').value)/100||0.015;
+  const sa=parseFloat(document.getElementById('mFSA').value)/100||0.0015;
+  if(!c){showToast('请输入基金代码');return}
+  if(oc&&oc!==c){D.txs.forEach(t=>{if(t.fundCode===oc)t.fundCode=c});D.initPos.forEach(p=>{if(p.fundCode===oc)p.fundCode=c});D.funds=D.funds.filter(f=>f.code!==oc)}
+  const i=D.funds.findIndex(f=>f.code===c);
+  const obj={code:c,name:n,holdDays:h,redeemFeeRate:rr,subFeeRate:sf,subActualFeeRate:sa};
+  if(i>=0)D.funds[i]=obj;else D.funds.push(obj);
+  sv();closeMo();render();showToast('已保存');
+}
+function delFund(c){showCfm('删除基金将同时清除相关记录，确定？',()=>{D.funds=D.funds.filter(f=>f.code!==c);D.txs=D.txs.filter(t=>t.fundCode!==c);D.initPos=D.initPos.filter(p=>p.fundCode!==c);sv();render();showToast('已删除')})}
+
+function showAccMo(id){
+  const a=id?getAcc(id):null;
+  openMo(`<div class="mo-title">${a?'编辑账户':'添加账户'}</div>
+    <div class="rf-s"><span class="rf-l">账户名称</span><input class="rf-in" id="mAN" value="${a?a.name:''}" placeholder="如 华泰主账户"></div>
+    <input type="hidden" id="mAID" value="${id||''}">
+    <button class="rf-submit primary" onclick="saveAcc()">保存</button>
+    <button class="rf-submit secondary" onclick="closeMo()">取消</button>`);
+}
+function saveAcc(){
+  const n=document.getElementById('mAN').value.trim(),id=document.getElementById('mAID').value;
+  if(!n){showToast('请输入账户名称');return}
+  if(id){const a=getAcc(id);if(a)a.name=n}else D.accounts.push({id:gid(),name:n});
+  sv();closeMo();render();showToast('已保存');
+}
+function delAcc(id){showCfm('删除账户将同时清除相关记录，确定？',()=>{D.accounts=D.accounts.filter(a=>a.id!==id);D.txs=D.txs.filter(t=>t.accountId!==id);D.initPos=D.initPos.filter(p=>p.accountId!==id);sv();render();showToast('已删除')})}
+
+function showIPMo(fc,ac){
+  const fOpts=D.funds.map(f=>`<option value="${f.code}" ${fc===f.code?'selected':''}>${f.code} ${f.name}</option>`).join('');
+  const aOpts=D.accounts.map(a=>`<option value="${a.id}" ${ac===a.id?'selected':''}>${a.name}</option>`).join('');
+  const ex=fc&&ac?getInit(fc,ac):0;
+  openMo(`<div class="mo-title">${ex>0?'编辑初始持仓':'录入初始持仓'}</div>
+    <div class="rf-row"><div class="rf-s"><span class="rf-l">基金</span><select class="rf-in" id="mIPF">${fOpts}</select></div><div class="rf-s"><span class="rf-l">账户</span><select class="rf-in" id="mIPA">${aOpts}</select></div></div>
+    <div class="rf-s"><span class="rf-l">持有份额</span><input class="rf-in" id="mIPS" value="${ex||''}" placeholder="当前持有的总份额" inputmode="numeric"></div>
+    <button class="rf-submit primary" onclick="saveIP('${fc||''}','${ac||''}')">保存</button>
+    <button class="rf-submit secondary" onclick="closeMo()">取消</button>`);
+}
+function saveIP(ofc,oac){
+  const fc=document.getElementById('mIPF').value,ac=document.getElementById('mIPA').value;
+  const sh=parseFloat(document.getElementById('mIPS').value)||0;
+  if(!fc||!ac){showToast('请选择基金和账户');return}
+  if(ofc&&oac)D.initPos=D.initPos.filter(p=>!(p.fundCode===ofc&&p.accountId===oac));
+  D.initPos=D.initPos.filter(p=>!(p.fundCode===fc&&p.accountId===ac));
+  if(sh>0)D.initPos.push({fundCode:fc,accountId:ac,shares:sh});
+  sv();closeMo();render();showToast('已保存');
+}
+function delIP(fc,ac){showCfm('确定删除？',()=>{D.initPos=D.initPos.filter(p=>!(p.fundCode===fc&&p.accountId===ac));sv();render();showToast('已删除')})}
+
+function expData(){const b=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`lof_${today()}.json`;a.click();showToast('已导出')}
+function impData(){const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.funds&&d.txs){D=d;sv();render();showToast('导入成功')}else showToast('格式不正确')}catch{showToast('解析失败')}};r.readAsText(f)};i.click()}
+
+// ===== DIALOGS =====
+let _cfmCb=null;
+function showCfm(m,cb){document.getElementById('cfmMsg').textContent=m;_cfmCb=cb;document.getElementById('cfm').classList.add('show')}
+function closeCfm(){document.getElementById('cfm').classList.remove('show');_cfmCb=null}
+document.getElementById('cfmOk').addEventListener('click',()=>{if(_cfmCb)_cfmCb();closeCfm()});
+document.getElementById('cfm').addEventListener('click',e=>{if(e.target.id==='cfm')closeCfm()});
+
+function showToast(m){const el=document.getElementById('toast');el.textContent=m;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2200)}
+
+document.getElementById('tabBar').addEventListener('click',e=>{
+  const b=e.target.closest('.tab');if(!b)return;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  b.classList.add('active');
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  const t=b.dataset.t;
+  document.getElementById('p'+t.charAt(0).toUpperCase()+t.slice(1)).classList.add('active');
+});
+
+// PWA
+const mf={name:'LOF套利助手',short_name:'LOF套利',display:'standalone',background_color:'#08090d',theme_color:'#08090d',icons:[{src:'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="#08090d"/><text x="96" y="125" text-anchor="middle" font-size="80" font-family="sans-serif" font-weight="700" fill="#f59e0b">L</text></svg>'),sizes:'192x192',type:'image/svg+xml'}]};
+const mb=new Blob([JSON.stringify(mf)],{type:'application/json'});
+const ml=document.createElement('link');ml.rel='manifest';ml.href=URL.createObjectURL(mb);document.head.appendChild(ml);
+
+render();
+</script>
+</body>
+</html>
