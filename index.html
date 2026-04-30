@@ -189,15 +189,53 @@ function commLabel(){const r=commRate()*10000;return r%1===0?'万'+r:'万'+r.toF
 
 function fetchHistNav(code,date){
   return new Promise((res,rej)=>{
-    const cb='jQuery'+Date.now();
+    const cb='tnav_'+Date.now();
     const t=setTimeout(()=>{delete window[cb];rej()},8000);
-    window[cb]=d=>{clearTimeout(t);delete window[cb];try{if(d&&d.Data&&d.Data.LSJZList&&d.Data.LSJZList.length>0){res({nav:parseFloat(d.Data.LSJZList[0].DWJZ),date:d.Data.LSJZList[0].FSRQ})}else rej()}catch(e){rej()}};
-    const s=document.createElement('script');
-    s.src='https://api.fund.eastmoney.com/f10/lsjz?callback='+cb+'&fundCode='+code+'&pageIndex=1&pageSize=5&startDate='+addD(date,-5)+'&endDate='+date;
-    s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();rej()};s.onload=()=>s.remove();
+    window[cb]=function(d){
+      clearTimeout(t);delete window[cb];
+      try{
+        var arr=null;
+        if(Array.isArray(d))arr=d;
+        else if(d){
+          for(var k in d){if(Array.isArray(d[k])&&d[k].length>0&&typeof d[k][0]==='object'){arr=d[k];break}}
+          if(!arr&&d.Data&&d.Data.LSJZList)arr=d.Data.LSJZList;
+        }
+        if(!arr||!arr.length){rej();return}
+        var best=null;
+        for(var i=0;i<arr.length;i++){
+          var item=arr[i];
+          var nav=parseFloat(item.DWJZ||item.nav||item.NAV||item.dwjz||item.fundNav||item.unitNav||item[1]);
+          var dt=item.FSRQ||item.date||item.Date||item.dateNav||item.fsrq||item.navDate||item[0];
+          if(isNaN(nav)||nav<=0||!dt)continue;
+          dt=dt.replace(/\//g,'-');
+          if(dt.length>10)dt=dt.slice(0,10);
+          if(dt===date){res({nav:nav,date:dt});return}
+          if(!best||dt>best.date)best={nav:nav,date:dt};
+        }
+        if(best)res(best);else rej();
+      }catch(e){rej()}
+    };
+    var s=document.createElement('script');
+    s.src='https://stockjs.finance.qq.com/fundUnitNavAll/data/year_all/'+code+'.js?callback='+cb;
+    s.onerror=function(){clearTimeout(t);delete window[cb];s.remove();rej()};
+    s.onload=function(){s.remove()};
     document.head.appendChild(s);
-  })
+  }).catch(function(){
+    return new Promise(function(res2,rej2){
+      var cb2='jQuery'+Date.now();
+      var t2=setTimeout(function(){delete window[cb2];rej2()},8000);
+      window[cb2]=function(d){
+        clearTimeout(t2);delete window[cb2];
+        try{if(d&&d.Data&&d.Data.LSJZList&&d.Data.LSJZList.length>0){res2({nav:parseFloat(d.Data.LSJZList[0].DWJZ),date:d.Data.LSJZList[0].FSRQ})}else rej2()}catch(e){rej2()}
+      };
+      var s2=document.createElement('script');
+      s2.src='https://api.fund.eastmoney.com/f10/lsjz?callback='+cb2+'&fundCode='+code+'&pageIndex=1&pageSize=5&startDate='+addD(date,-5)+'&endDate='+date;
+      s2.onerror=function(){clearTimeout(t2);delete window[cb2];s2.remove();rej2()};s2.onload=function(){s2.remove()};
+      document.head.appendChild(s2);
+    });
+  });
 }
+
 
 function fetchRTNav(code){
   return new Promise((res,rej)=>{
