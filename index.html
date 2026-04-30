@@ -187,102 +187,60 @@ function pnlSign(v){return v>0?'+':''}
 function commRate(){return D.settings.commissionRate||0.0001}
 function commLabel(){const r=commRate()*10000;return r%1===0?'万'+r:'万'+r.toFixed(1)}
 
-function fetchHistNav(code, date) {
-  return new Promise(function(resolve, reject) {
-    // Step 1: Try Tencent API
-    var oldKeys = {};
-    for (var k in window) oldKeys[k] = 1;
+function fetchHistNav(code,date){
+  return new Promise(function(resolve,reject){
+    window.fundNavAllYearData=null;
+    var script=document.createElement('script');
+    var done=false;
+    var timer=setTimeout(function(){if(!done){done=true;script.remove();tryParse()}},8000);
+    script.src='https://stockjs.finance.qq.com/fundUnitNavAll/data/year_all/'+code+'.js';
+    script.onload=function(){if(done)return;done=true;clearTimeout(timer);script.remove();tryParse()};
+    script.onerror=function(){if(done)return;done=true;clearTimeout(timer);script.remove();tryEastmoney()};
+    document.head.appendChild(script);
 
-    var tencentScript = document.createElement('script');
-    var done = false;
-    var timer = setTimeout(function() {
-      if (!done) { done = true; tencentScript.remove(); tryEastmoney(); }
-    }, 6000);
-
-    tencentScript.src = 'https://stockjs.finance.qq.com/fundUnitNavAll/data/year_all/' + code + '.js';
-
-    tencentScript.onload = function() {
-      if (done) return;
-      done = true; clearTimeout(timer); tencentScript.remove();
-
-      var data = null;
-      for (var k in window) {
-        if (oldKeys[k] || window[k] == null) continue;
-        try {
-          var v = window[k];
-          if (Array.isArray(v) && v.length > 0) { data = v; break; }
-          if (typeof v === 'object') {
-            for (var p in v) {
-              if (Array.isArray(v[p]) && v[p].length > 5) { data = v[p]; break; }
-            }
-            if (data) break;
-          }
-        } catch(e) {}
-      }
-
-      if (data) {
-        var result = searchDate(data, date);
-        if (result) { resolve(result); return; }
-      }
-      tryEastmoney();
-    };
-
-    tencentScript.onerror = function() {
-      if (done) return;
-      done = true; clearTimeout(timer); tencentScript.remove();
-      tryEastmoney();
-    };
-
-    document.head.appendChild(tencentScript);
-
-    // Step 2: Try Eastmoney JSONP API
-    function tryEastmoney() {
-      var cb = 'cb_nav_' + Date.now();
-      var t2 = setTimeout(function() { delete window[cb]; tryFallback(); }, 6000);
-      window[cb] = function(d) {
-        clearTimeout(t2); delete window[cb];
-        try {
-          if (d && d.Data && d.Data.LSJZList && d.Data.LSJZList.length > 0) {
-            resolve({nav: parseFloat(d.Data.LSJZList[0].DWJZ), date: d.Data.LSJZList[0].FSRQ});
-          } else tryFallback();
-        } catch(e) { tryFallback(); }
-      };
-      var s = document.createElement('script');
-      s.src = 'https://api.fund.eastmoney.com/f10/lsjz?callback=' + cb + '&fundCode=' + code + '&pageIndex=1&pageSize=5&startDate=' + addD(date, -5) + '&endDate=' + date;
-      s.onerror = function() { clearTimeout(t2); delete window[cb]; s.remove(); tryFallback(); };
-      s.onload = function() { s.remove(); };
-      document.head.appendChild(s);
-    }
-
-    // Step 3: Fallback to real-time
-    function tryFallback() {
-      fetchRTNav(code).then(function(d) {
-        resolve({nav: d.nav, date: d.date});
-      }).catch(function() { reject('all failed'); });
-    }
-
-    // Helper: Search array for date match
-    function searchDate(arr, targetDate) {
-      var best = null;
-      for (var i = 0; i < arr.length; i++) {
-        var item = arr[i];
-        var dt, nav;
-        if (Array.isArray(item)) {
-          dt = String(item[0]).replace(/\//g, '-');
-          nav = parseFloat(item[1]);
-        } else if (item && typeof item === 'object') {
-          dt = String(item.FSRQ || item.date || item.Date || item.navDate || '').replace(/\//g, '-');
-          nav = parseFloat(item.DWJZ || item.nav || item.NAV || item.unitNav || item.fundNav);
+    function tryParse(){
+      try{
+        var raw=window.fundNavAllYearData;
+        if(!raw){tryEastmoney();return}
+        var arr=null;
+        var keys=Object.keys(raw);
+        for(var i=0;i<keys.length;i++){
+          if(Array.isArray(raw[keys[i]])&&raw[keys[i]].length>5){arr=raw[keys[i]];break}
         }
-        if (!dt || isNaN(nav) || nav <= 0) continue;
-        if (dt.length > 10) dt = dt.substring(0, 10);
-        if (dt === targetDate) return {nav: nav, date: dt};
-        if (!best || dt > best.date) best = {nav: nav, date: dt};
-      }
-      return best;
+        if(!arr){tryEastmoney();return}
+        var target=date.replace(/-/g,'');
+        var best=null;
+        for(var j=0;j<arr.length;j++){
+          var row=String(arr[j]).split(' ');
+          var dtStr=row[0];
+          var navVal=parseFloat(row[1]);
+          if(isNaN(navVal)||navVal<=0)continue;
+          var fmt=dtStr.substring(0,4)+'-'+dtStr.substring(4,6)+'-'+dtStr.substring(6,8);
+          if(dtStr===target){resolve({nav:navVal,date:fmt});window.fundNavAllYearData=null;return}
+          if(!best||dtStr>best._r)best={nav:navVal,date:fmt,_r:dtStr}
+        }
+        window.fundNavAllYearData=null;
+        if(best){delete best._r;resolve(best)}else tryEastmoney()
+      }catch(e){window.fundNavAllYearData=null;tryEastmoney()}
     }
-  });
+
+    function tryEastmoney(){
+      var cb='ecb_'+Date.now();
+      var t2=setTimeout(function(){delete window[cb];useRT()},6000);
+      window[cb]=function(d){clearTimeout(t2);delete window[cb];
+        try{if(d&&d.Data&&d.Data.LSJZList&&d.Data.LSJZList.length>0){resolve({nav:parseFloat(d.Data.LSJZList[0].DWJZ),date:d.Data.LSJZList[0].FSRQ})}else useRT()}catch(e){useRT()}};
+      var s=document.createElement('script');
+      s.src='https://api.fund.eastmoney.com/f10/lsjz?callback='+cb+'&fundCode='+code+'&pageIndex=1&pageSize=5&startDate='+addD(date,-5)+'&endDate='+date;
+      s.onerror=function(){clearTimeout(t2);delete window[cb];s.remove();useRT()};s.onload=function(){s.remove()};
+      document.head.appendChild(s)
+    }
+
+    function useRT(){
+      fetchRTNav(code).then(function(d){resolve({nav:d.nav,date:d.date})}).catch(function(){reject('all failed')})
+    }
+  })
 }
+
 
 
 function fetchRTNav(code){
