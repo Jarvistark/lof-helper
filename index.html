@@ -190,10 +190,10 @@ function commLabel(){const r=commRate()*10000;return r%1===0?'万'+r:'万'+r.toF
 function fetchHistNav(code,date){
   var target=date.replace(/-/g,'');
   return new Promise(function(resolve,reject){
-    var captured=null;
+    var captured=undefined;
     try{
       Object.defineProperty(window,'fundNavAllYearData',{
-        configurable:true,
+        configurable:true,enumerable:true,
         get:function(){return captured},
         set:function(v){captured=v}
       });
@@ -201,33 +201,44 @@ function fetchHistNav(code,date){
     var s=document.createElement('script');
     s.src='https://stockjs.finance.qq.com/fundUnitNavAll/data/year_all/'+code+'.js?_t='+Date.now();
     var done=false;
-    var timer=setTimeout(function(){if(!done){done=true;s.remove();cu();reject('超时')}},8000);
+    var timer=setTimeout(function(){if(!done){done=true;s.remove();cl();reject('超时')}},8000);
     s.onload=function(){
       setTimeout(function(){
         if(done)return;done=true;clearTimeout(timer);s.remove();
-        var raw=captured;cu();
+        var raw=captured;cl();
+        if(!raw){raw=window.fundNavAllYearData;try{delete window.fundNavAllYearData}catch(e){}}
         if(!raw){reject('未获取到数据');return}
         var arr=null;
-        for(var k in raw){if(Array.isArray(raw[k])&&raw[k].length>0){arr=raw[k];break}}
-        if(!arr){reject('数据格式异常');return}
+        if(Array.isArray(raw)){arr=raw}
+        else if(typeof raw==='object'){for(var k in raw){if(Array.isArray(raw[k])&&raw[k].length>0){arr=raw[k];break}}}
+        if(!arr||!arr.length){reject('数据为空');return}
+        console.log('===LOF DEBUG===');
+        console.log('目标日期:',target,'总条数:',arr.length);
+        console.log('第1条:',JSON.stringify(arr[0]));
+        console.log('最后1条:',JSON.stringify(arr[arr.length-1]));
         var best=null;
         for(var i=0;i<arr.length;i++){
-          var parts=String(arr[i]).split(' ');
-          var dt=parts[0],nav=parseFloat(parts[1]);
-          if(isNaN(nav)||nav<=0)continue;
-          var fmt=dt.substring(0,4)+'-'+dt.substring(4,6)+'-'+dt.substring(6,8);
-          if(dt===target){resolve({nav:nav,date:fmt});return}
-          if(!best||dt>best._d)best={nav:nav,date:fmt,_d:dt}
+          var item=arr[i],dt,nav;
+          if(Array.isArray(item)){dt=String(item[0]);nav=parseFloat(item[1])}
+          else if(typeof item==='string'){var p=item.split(' ');dt=p[0];nav=parseFloat(p[1])}
+          else if(item&&typeof item==='object'){dt=String(item.date||item.FSRQ||item.Date||item[0]||'');nav=parseFloat(item.nav||item.DWJZ||item.NAV||item.unitNav||item[1])}
+          else continue;
+          if(!dt||isNaN(nav)||nav<=0)continue;
+          dt=dt.replace(/\//g,'-');
+          if(dt.length===8&&dt.indexOf('-')<0)dt=dt.substring(0,4)+'-'+dt.substring(4,6)+'-'+dt.substring(6,8);
+          if(dt===target){resolve({nav:nav,date:dt});return}
+          if(!best||dt>best._d)best={nav:nav,date:dt,_d:dt}
         }
         if(best){delete best._d;resolve(best)}
-        else reject('该日期无净值数据')
+        else reject('未找到'+date+'的净值')
       },500)
     };
-    s.onerror=function(){if(!done){done=true;clearTimeout(timer);s.remove();cu();reject('接口加载失败')}};
+    s.onerror=function(){if(!done){done=true;clearTimeout(timer);s.remove();cl();reject('接口加载失败')}};
     document.head.appendChild(s);
-    function cu(){try{delete window.fundNavAllYearData}catch(e){try{Object.defineProperty(window,'fundNavAllYearData',{value:undefined,configurable:true,writable:true})}catch(e2){}}}
+    function cl(){try{delete window.fundNavAllYearData}catch(e){try{Object.defineProperty(window,'fundNavAllYearData',{value:undefined,configurable:true,writable:true,enumerable:true})}catch(e2){}}}
   })
 }
+
 
 
 
