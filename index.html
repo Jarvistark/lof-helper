@@ -129,7 +129,7 @@ select.rf-in{appearance:none;-webkit-appearance:none;background-image:url("data:
 <body>
 <div class="app">
   <div class="header">
-    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v6.0beta</span></div></div>
+    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v6.1beta</span></div></div>
     <div class="summary-bar" id="sumBar"></div>
   </div>
   <nav class="tab-bar" id="tabBar">
@@ -316,7 +316,7 @@ function rDash(){
     const pc=pnlCls(pnl);
     return`<div class="fc"><div class="fc-hd"><div><div class="fc-code">${f.code}</div><div class="fc-name">${f.name}</div></div><div class="fc-tag">${f.holdDays}天 · ${(f.redeemFeeRate*100).toFixed(1)}%</div></div><div class="fc-row"><span class="fc-avail">${fmtI(av)}</span><span class="fc-avail-l">可操作份额</span><span class="fc-pnl ${pc}">${pnl!==0?pnlSign(pnl)+'¥'+fmtM(pnl):'累计 ¥0.00'}</span></div><div class="fc-stats"><div class="fc-st"><div class="fc-st-v">${fmtI(ttl)}</div><div class="fc-st-l">总持仓</div></div><div class="fc-st"><div class="fc-st-v" style="color:var(--orange)">${fmtI(lk)}</div><div class="fc-st-l">锁定</div></div><div class="fc-st"><div class="fc-st-v">${D.accounts.filter(a=>totalPos(f.code,a.id)>0).length}</div><div class="fc-st-l">账户</div></div></div>${tlR?`<div class="fc-tl"><div class="fc-tl-t">解锁时间线</div>${tlR}${tl.length>4?`<div class="fc-tl-r" style="color:var(--mut);font-size:.6rem">还有 ${tl.length-4} 批...</div>`:''}</div>`:''}${accR?`<div class="fc-accs">${accR}</div>`:''}<div class="fc-btns"><button class="fc-btn pri" onclick="goRec('${f.code}','discount')">折价记账</button><button class="fc-btn" onclick="goRec('${f.code}','premium')">溢价记账</button></div></div>`}).join('')}
 
-function goRec(c,m){document.querySelector('[data-t="rec"]').click();setTimeout(()=>{recMode=m;renderRec();const sel=document.getElementById('rFund');if(sel){sel.value=c;sel.dispatchEvent(new Event('change'))}},50)}
+function goRec(c,m){document.querySelector('[data-t="rec"]').click();setTimeout(()=>{recMode=m;rRec();const sel=document.getElementById('rFund');if(sel){sel.value=c;sel.dispatchEvent(new Event('change'))}},50)}
 
 let recMode='discount';
 function getSelectedAccs(){
