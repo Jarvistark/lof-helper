@@ -183,7 +183,7 @@ function fmtD(s){if(!s)return'-';const[y,m,d]=s.split('-');return`${y}.${m}.${d}
 function fmtM(n){return Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
 function fmtI(n){return Math.round(n).toLocaleString('en-US')}
 function pnlCls(v){return v>0?'up':v<0?'dn':'zero'}
-function pnlSign(v){return v>0?'+':''}
+function pnlSign(v){return v>0?'+':v<0?'-':''}
 function commRate(){return D.settings.commissionRate||0.0001}
 function commLabel(){const r=commRate()*10000;return r%1===0?'万'+r:'万'+r.toFixed(1)}
 
