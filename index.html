@@ -129,7 +129,7 @@ select.rf-in{appearance:none;-webkit-appearance:none;background-image:url("data:
 <body>
 <div class="app">
   <div class="header">
-    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v6.0</span></div></div>
+    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v6.0beta</span></div></div>
     <div class="summary-bar" id="sumBar"></div>
   </div>
   <nav class="tab-bar" id="tabBar">
@@ -336,7 +336,7 @@ function rRec(){
     <div class="rf-s"><span class="rf-l">基金</span><select class="rf-in" id="rFund" onchange="onRecChg()">${fOpts}</select></div>
     <div class="rf-s"><span class="rf-l">账户（可多选）</span><div id="rAccWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${aChips}</div></div>
     <div id="rAvail"></div>
-    <div class="rf-row"><div class="rf-s"><span class="rf-l">日期</span><input class="rf-in" type="date" id="rDate" value="${today()}" onchange="onRecIn()"></div><div class="rf-s"><span class="rf-l">时间</span><input class="rf-in" type="time" id="rTime" value="${nowH()}"></div></div>
+    <div class="rf-s"><span class="rf-l">日期</span><input class="rf-in" type="date" id="rDate" value="${today()}" onchange="onRecIn()"></div>
     ${isD?`
       <div class="rf-s"><span class="rf-l">买入价格（场内）</span><input class="rf-in" id="rBP" placeholder="如 2.1250" inputmode="decimal" step="0.0001" oninput="onRecIn()"></div>
       <div class="rf-s"><span class="rf-l">买入份额</span><input class="rf-in" id="rBS" placeholder="如 10000" inputmode="numeric" oninput="onRecIn()"></div>
@@ -492,7 +492,7 @@ function doFetchHist(){
 function submitTx(){
   const fc=document.getElementById('rFund')?.value;
   const accs=getSelectedAccs();
-  const date=document.getElementById('rDate')?.value,time=document.getElementById('rTime')?.value;
+  const date=document.getElementById('rDate')?.value,time='';
   const note=document.getElementById('rNote')?.value||'';
   if(!fc||!accs.length||!date){showToast('请填写必要信息');return}
   if(recMode==='discount'){
@@ -525,13 +525,18 @@ function submitTx(){
 
 
 let histF='all';
+let histAcc='all';
+
 function rHist(){
   const el=document.getElementById('pHist');
   if(!D.txs.length){el.innerHTML=`<div class="empty"><div class="empty-i">📋</div><div class="empty-t">暂无记录</div><div class="empty-d">完成操作后记录将在此显示</div></div>`;return}
-  const chips=[{code:'all',name:'全部'},...D.funds];
-  const ch=chips.map(f=>`<span class="h-chip ${histF===f.code?'active':''}" onclick="histF='${f.code}';rHist()">${f.name||f.code}</span>`).join('');
-  const txs=D.txs.filter(t=>histF==='all'||t.fundCode===histF).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
-  el.innerHTML=`<div class="h-filter">${ch}</div>`+txs.map(t=>{
+  const funds=[{code:'all',name:'全部'},...D.funds];
+  const accs=[{id:'all',name:'全部'},...D.accounts];
+  const fCh=funds.map(f=>`<span class="h-chip ${histF===f.code?'active':''}" onclick="histF='${f.code}';rHist()">${f.name||f.code}</span>`).join('');
+  const aCh=accs.map(a=>`<span class="h-chip ${histAcc===a.id?'active':''}" onclick="histAcc='${a.id}';rHist()">${a.name}</span>`).join('');
+  const txs=D.txs.filter(t=>(histF==='all'||t.fundCode===histF)&&(histAcc==='all'||t.accountId===histAcc)).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
+  if(!txs.length){el.innerHTML=`<div class="h-filter">${fCh}</div><div class="h-filter">${aCh}</div><div class="empty"><div class="empty-i">📋</div><div class="empty-t">该筛选条件下无记录</div></div>`;return}
+  el.innerHTML=`<div class="h-filter">${fCh}</div><div class="h-filter">${aCh}</div>`+txs.map(t=>{
     const f=getFund(t.fundCode),a=getAcc(t.accountId);const pnl=calcPnL(t);const comm=calcComm(t);
     const tag=t.mode==='discount'?`<span class="h-tag disc">折价</span>`:`<span class="h-tag prem">溢价</span>`;
     let pnlH=pnl!==null?`<span class="h-pnl ${pnlCls(pnl)}">${pnlSign(pnl)}¥${fmtM(pnl)}</span>`:`<span class="h-pnl na">待净值</span>`;
@@ -552,6 +557,7 @@ function rHist(){
     return`<div class="h-card"><div class="h-top"><div class="h-fund">${t.fundCode} ${f?f.name:''} ${tag}</div>${pnlH}</div>${rows}<div class="h-acts">${(t.mode==='discount'&&!t.redeemNav)||(t.mode==='premium'&&!t.subscribeNav)?`<button class="h-act" onclick="fillNavTx('${t.id}')">填净值</button>`:''}<button class="h-act" onclick="editTx('${t.id}')">编辑</button><button class="h-act danger" onclick="delTx('${t.id}')">删除</button></div></div>`;
   }).join('');
 }
+
 
 function fillNavTx(id){
   var tx=D.txs.find(function(t){return t.id===id});if(!tx)return;
