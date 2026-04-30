@@ -201,15 +201,15 @@ function fetchHistNav(code,date){
     var s=document.createElement('script');
     s.src='https://stockjs.finance.qq.com/fundUnitNavAll/data/year_all/'+code+'.js?_t='+Date.now();
     var done=false;
-    var timer=setTimeout(function(){if(!done){done=true;s.remove();cu();reject()}},8000);
+    var timer=setTimeout(function(){if(!done){done=true;s.remove();cu();reject('超时')}},8000);
     s.onload=function(){
       setTimeout(function(){
         if(done)return;done=true;clearTimeout(timer);s.remove();
         var raw=captured;cu();
-        if(!raw){reject();return}
+        if(!raw){reject('未获取到数据');return}
         var arr=null;
         for(var k in raw){if(Array.isArray(raw[k])&&raw[k].length>0){arr=raw[k];break}}
-        if(!arr){reject();return}
+        if(!arr){reject('数据格式异常');return}
         var best=null;
         for(var i=0;i<arr.length;i++){
           var parts=String(arr[i]).split(' ');
@@ -219,31 +219,16 @@ function fetchHistNav(code,date){
           if(dt===target){resolve({nav:nav,date:fmt});return}
           if(!best||dt>best._d)best={nav:nav,date:fmt,_d:dt}
         }
-        if(best){delete best._d;resolve(best)}else reject()
+        if(best){delete best._d;resolve(best)}
+        else reject('该日期无净值数据')
       },500)
     };
-    s.onerror=function(){if(!done){done=true;clearTimeout(timer);s.remove();cu();reject()}};
+    s.onerror=function(){if(!done){done=true;clearTimeout(timer);s.remove();cu();reject('接口加载失败')}};
     document.head.appendChild(s);
-    function cu(){
-      try{delete window.fundNavAllYearData}catch(e){
-        try{Object.defineProperty(window,'fundNavAllYearData',{value:undefined,configurable:true,writable:true})}catch(e2){}
-      }
-    }
-  }).catch(function(){
-    return new Promise(function(resolve,reject){
-      var cb='ecb_'+Date.now();
-      var t=setTimeout(function(){delete window[cb];reject()},6000);
-      window[cb]=function(d){clearTimeout(t);delete window[cb];
-        try{if(d&&d.Data&&d.Data.LSJZList&&d.Data.LSJZList.length>0){resolve({nav:parseFloat(d.Data.LSJZList[0].DWJZ),date:d.Data.LSJZList[0].FSRQ})}else reject()}catch(e){reject()}};
-      var s=document.createElement('script');
-      s.src='https://api.fund.eastmoney.com/f10/lsjz?callback='+cb+'&fundCode='+code+'&pageIndex=1&pageSize=5&startDate='+addD(date,-5)+'&endDate='+date;
-      s.onerror=function(){clearTimeout(t);delete window[cb];s.remove();reject()};s.onload=function(){s.remove()};
-      document.head.appendChild(s)
-    })
-  }).catch(function(){
-    return fetchRTNav(code).then(function(d){return{nav:d.nav,date:d.date}})
+    function cu(){try{delete window.fundNavAllYearData}catch(e){try{Object.defineProperty(window,'fundNavAllYearData',{value:undefined,configurable:true,writable:true})}catch(e2){}}}
   })
 }
+
 
 
 
@@ -415,27 +400,20 @@ function doFetch(){
 }
 
 function doFetchHist(){
-  const fc=document.getElementById('rFund')?.value;
-  const date=document.getElementById('rDate')?.value;
+  var fc=document.getElementById('rFund')?.value;
+  var date=document.getElementById('rDate')?.value;
   if(!fc){showToast('请先选择基金');return}
   if(!date){showToast('请先选择日期');return}
   showToast('按日期获取中...');
-  fetchHistNav(fc,date).then(d=>{
-    const inp=document.getElementById('rNav');if(!inp)return;
+  fetchHistNav(fc,date).then(function(d){
+    var inp=document.getElementById('rNav');if(!inp)return;
     inp.value=d.nav.toFixed(4);
-    const match=d.date===date?'':` (实际净值日:${d.date})`;
-    showToast(`净值 ¥${d.nav.toFixed(4)}${match}`);
-    if(recMode==='premium')fillSubAmt();onRecIn();
-  }).catch(()=>{
-    // Fallback to real-time
-    fetchRTNav(fc).then(d=>{
-      const inp=document.getElementById('rNav');if(!inp)return;
-      inp.value=d.nav.toFixed(4);
-      showToast(`未找到历史净值，已获取最新: ¥${d.nav.toFixed(4)}${d.est?' [估算]':''}`);
-      if(recMode==='premium')fillSubAmt();onRecIn();
-    }).catch(()=>showToast('获取失败，请手动输入'));
-  });
+    var match=d.date===date?'':' (实际净值日:'+d.date+')';
+    showToast('净值 ¥'+d.nav.toFixed(4)+match);
+    if(recMode==='premium')fillSubAmt();onRecIn()
+  }).catch(function(err){showToast('获取失败: '+err)})
 }
+
 
 function submitTx(){
   const fc=document.getElementById('rFund')?.value,ac=document.getElementById('rAcc')?.value;
@@ -492,18 +470,14 @@ function rHist(){
 }
 
 function fillNavTx(id){
-  const tx=D.txs.find(t=>t.id===id);if(!tx)return;
+  var tx=D.txs.find(function(t){return t.id===id});if(!tx)return;
   showToast('获取中...');
-  fetchHistNav(tx.fundCode,tx.date).then(d=>{
+  fetchHistNav(tx.fundCode,tx.date).then(function(d){
     if(tx.mode==='discount')tx.redeemNav=d.nav;else tx.subscribeNav=d.nav;
-    sv();render();showToast(`已填入 ¥${d.nav} (${d.date})`);
-  }).catch(()=>{
-    fetchRTNav(tx.fundCode).then(d=>{
-      if(tx.mode==='discount')tx.redeemNav=d.nav;else tx.subscribeNav=d.nav;
-      sv();render();showToast(`已填入最新净值 ¥${d.nav}`);
-    }).catch(()=>showToast('获取失败'));
-  });
+    sv();render();showToast('已填入 ¥'+d.nav+' ('+d.date+')')
+  }).catch(function(err){showToast('获取失败: '+err)})
 }
+
 
 function editTx(id){
   const tx=D.txs.find(t=>t.id===id);if(!tx)return;
