@@ -146,6 +146,24 @@ select.rf-in{appearance:none;-webkit-appearance:none;background-image:url("data:
 <div class="toast" id="toast"></div>
 <script>
 const SK='lof_v5';
+function ld(){
+  try{
+    const r=localStorage.getItem(SK);
+    if(r) return JSON.parse(r);
+    // 迁移旧版本数据
+    for(const k of ['lof_v4','lof_v3','lof_v2']){
+      const old=localStorage.getItem(k);
+      if(old){
+        const d=JSON.parse(old);
+        if(!d.settings) d.settings={commissionRate:0.0001};
+        localStorage.setItem(SK,old);
+        return d;
+      }
+    }
+    return df();
+  }catch{return df()}
+}
+
 function ld(){try{const r=localStorage.getItem(SK);return r?JSON.parse(r):df()}catch{return df()}}
 function sv(){localStorage.setItem(SK,JSON.stringify(D))}
 function df(){return{funds:[],accounts:[],initPos:[],txs:[],settings:{commissionRate:0.0001}}}
