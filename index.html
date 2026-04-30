@@ -163,8 +163,6 @@ function ld(){
     return df();
   }catch{return df()}
 }
-
-function ld(){try{const r=localStorage.getItem(SK);return r?JSON.parse(r):df()}catch{return df()}}
 function sv(){localStorage.setItem(SK,JSON.stringify(D))}
 function df(){return{funds:[],accounts:[],initPos:[],txs:[],settings:{commissionRate:0.0001}}}
 function gid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
