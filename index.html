@@ -193,7 +193,7 @@ function fetchHistNav(code,date){
     var script=document.createElement('script');
     var done=false;
     var timer=setTimeout(function(){if(!done){done=true;script.remove();tryParse()}},8000);
-    script.src='https://stockjs.finance.qq.com/fundUnitNavAll/data/year_all/'+code+'.js';
+    script.src='https://stockjs.finance.qq.com/fundUnitNavAll/data/year_all/'+code+'.js?_='+Date.now();
     script.onload=function(){if(done)return;done=true;clearTimeout(timer);script.remove();tryParse()};
     script.onerror=function(){if(done)return;done=true;clearTimeout(timer);script.remove();tryEastmoney()};
     document.head.appendChild(script);
