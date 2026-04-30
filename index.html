@@ -227,12 +227,10 @@ function fetchHistNav(code,date){
           dt=dt.replace(/\//g,'-');
           var rawDt=dt;
           if(dt.length===8&&dt.indexOf('-')<0)dt=dt.substring(0,4)+'-'+dt.substring(4,6)+'-'+dt.substring(6,8);
-          if(rawDt===target){resolve({nav:nav,date:dt});return}
-
-          if(!best||dt>best._d)best={nav:nav,date:dt,_d:dt}
+         if(rawDt===target){resolve({nav:nav,date:dt});return}
         }
-        if(best){delete best._d;resolve(best)}
-        else reject('未找到'+date+'的净值')
+         reject('该日期无净值数据，可能非交易日')
+
       },500)
     };
     s.onerror=function(){if(!done){done=true;clearTimeout(timer);s.remove();cl();reject('接口加载失败')}};
