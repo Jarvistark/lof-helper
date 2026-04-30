@@ -589,7 +589,7 @@ function delFund(c){showCfm('删除基金将同时清除相关记录，确定？
 function showAccMo(id){
   const a=id?getAcc(id):null;
   openMo(`<div class="mo-title">${a?'编辑账户':'添加账户'}</div>
-    <div class="rf-s"><span class="rf-l">账户名称</span><input class="rf-in" id="mAN" value="${a?a.name:''}" placeholder="如 华泰主账户"></div>
+    <div class="rf-s"><span class="rf-l">账户名称</span><input class="rf-in" id="mAN" value="${a?a.name:''}" placeholder="如 1810"></div>
     <input type="hidden" id="mAID" value="${id||''}">
     <button class="rf-submit primary" onclick="saveAcc()">保存</button>
     <button class="rf-submit secondary" onclick="closeMo()">取消</button>`);
