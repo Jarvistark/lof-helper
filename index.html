@@ -120,12 +120,14 @@ select.rf-in{appearance:none;-webkit-appearance:none;background-image:url("data:
 .empty{text-align:center;padding:50px 20px;animation:fadeUp .4s ease .1s both}
 .empty-i{font-size:2rem;opacity:.25;margin-bottom:12px}.empty-t{font-size:.92rem;color:var(--txt2);margin-bottom:6px}.empty-d{font-family:var(--fM);font-size:.68rem;color:var(--mut);line-height:1.6}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.acc-chip{font-family:var(--fM);font-size:.65rem;padding:6px 12px;border:1px solid var(--bd);border-radius:20px;color:var(--mut);cursor:pointer;transition:all .2s;user-select:none;-webkit-user-select:none}
+.acc-chip.active{border-color:var(--accent);color:var(--accent);background:var(--accentG)}
 </style>
 </head>
 <body>
 <div class="app">
   <div class="header">
-    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v5.6</span></div></div>
+    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v5.7</span></div></div>
     <div class="summary-bar" id="sumBar"></div>
   </div>
   <nav class="tab-bar" id="tabBar">
@@ -261,6 +263,12 @@ function getInit(fc,ac){const p=D.initPos.find(p=>p.fundCode===fc&&p.accountId==
 function sharesFromSub(tx){const f=getFund(tx.fundCode);if(!f||!tx.subscribeNav||tx.subscribeNav<=0||!tx.subscribeAmount)return 0;return tx.subscribeAmount/((1+f.subFeeRate)*tx.subscribeNav)}
 function totalPos(fc,ac){const init=getInit(fc,ac);const delta=D.txs.filter(t=>t.fundCode===fc&&t.accountId===ac).reduce((s,t)=>{if(t.mode==='discount')return s+t.buyShares-t.redeemShares;return s+sharesFromSub(t)-t.sellShares},0);return init+delta}
 function lockedShares(fc,ac){const f=getFund(fc);if(!f)return 0;const td=today();return D.txs.filter(t=>t.fundCode===fc&&t.accountId===ac).filter(t=>addD(t.date,f.holdDays)>td).reduce((s,t)=>{if(t.mode==='discount')return s+t.buyShares;return s+sharesFromSub(t)},0)}
+function getSelectedAccs(){
+  var chips=document.querySelectorAll('#rAccWrap .acc-chip');
+  var accs=[];
+  for(var i=0;i<chips.length;i++){if(chips[i].classList.contains('active'))accs.push(chips[i].dataset.id)}
+  return accs;
+}
 function avail(fc,ac){return Math.max(0,totalPos(fc,ac)-lockedShares(fc,ac))}
 function totalAll(fc){return D.accounts.reduce((s,a)=>s+totalPos(fc,a.id),0)}
 function lockedAll(fc){return D.accounts.reduce((s,a)=>s+lockedShares(fc,a.id),0)}
@@ -309,45 +317,56 @@ function rDash(){
 function goRec(c,m){document.querySelector('[data-t="rec"]').click();setTimeout(()=>{recMode=m;renderRec();const sel=document.getElementById('rFund');if(sel){sel.value=c;sel.dispatchEvent(new Event('change'))}},50)}
 
 let recMode='discount';
+function getSelectedAccs(){
+  var chips=document.querySelectorAll('#rAccWrap .acc-chip');
+  var accs=[];
+  for(var i=0;i<chips.length;i++){if(chips[i].classList.contains('active'))accs.push(chips[i].dataset.id)}
+  return accs;
+}
 function rRec(){
   const el=document.getElementById('pRec');
   if(!D.funds.length){el.innerHTML=`<div class="empty"><div class="empty-i">✏️</div><div class="empty-t">请先添加基金</div><div class="empty-d">去「设置」添加基金和账户后<br>即可开始记录操作</div></div>`;return}
   const fOpts=D.funds.map(f=>`<option value="${f.code}">${f.code} ${f.name}</option>`).join('');
-  const aOpts=D.accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+  const aChips=D.accounts.map(a=>`<span class="acc-chip" data-id="${a.id}" onclick="this.classList.toggle('active');onRecChg()">${a.name}</span>`).join('');
   const isD=recMode==='discount';
   el.innerHTML=`
     <div class="rf-s"><span class="rf-l">操作模式</span><div class="rf-mode"><div class="rf-mode-btn ${isD?'active':''}" onclick="setRecMode('discount')">折价套利（买+赎）</div><div class="rf-mode-btn ${!isD?'active':''}" onclick="setRecMode('premium')">溢价套利（卖+申）</div></div></div>
-    <div class="rf-row"><div class="rf-s"><span class="rf-l">基金</span><select class="rf-in" id="rFund" onchange="onRecChg()">${fOpts}</select></div><div class="rf-s"><span class="rf-l">账户</span><select class="rf-in" id="rAcc" onchange="onRecChg()">${aOpts}</select></div></div>
+    <div class="rf-s"><span class="rf-l">基金</span><select class="rf-in" id="rFund" onchange="onRecChg()">${fOpts}</select></div>
+    <div class="rf-s"><span class="rf-l">账户（可多选）</span><div id="rAccWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${aChips}</div></div>
     <div id="rAvail"></div>
     <div class="rf-row"><div class="rf-s"><span class="rf-l">日期</span><input class="rf-in" type="date" id="rDate" value="${today()}" onchange="onRecIn()"></div><div class="rf-s"><span class="rf-l">时间</span><input class="rf-in" type="time" id="rTime" value="${nowH()}"></div></div>
     ${isD?`
       <div class="rf-s"><span class="rf-l">买入价格（场内）</span><input class="rf-in" id="rBP" placeholder="如 2.1250" inputmode="decimal" step="0.0001" oninput="onRecIn()"></div>
       <div class="rf-s"><span class="rf-l">买入份额</span><input class="rf-in" id="rBS" placeholder="如 10000" inputmode="numeric" oninput="onRecIn()"></div>
       <div class="rf-s"><span class="rf-l">赎回份额</span><input class="rf-in" id="rRS" placeholder="默认同买入" inputmode="numeric" oninput="onRecIn()"></div>
-      <div class="rf-s"><span class="rf-l">基金净值 <span class="rf-fetch" onclick="doFetch()">[ 获取当日净值 ]</span> <span class="rf-fetch" onclick="doFetchHist()">[ 按日期获取 ]</span></span><input class="rf-in" id="rNav" placeholder="输入或获取净值" inputmode="decimal" step="0.0001" oninput="onRecIn()"></div><div id="navStatus" style="font-family:var(--fM);font-size:.65rem;margin-top:4px;"></div>
-
+      <div class="rf-s"><span class="rf-l">基金净值 <span class="rf-fetch" onclick="doFetch()">[ 获取当日净值 ]</span> <span class="rf-fetch" onclick="doFetchHist()">[ 按日期获取 ]</span></span><input class="rf-in" id="rNav" placeholder="输入或获取净值" inputmode="decimal" step="0.0001" oninput="onRecIn()"></div>
     `:`
       <div class="rf-s"><span class="rf-l">卖出价格（场内）</span><input class="rf-in" id="rSP" placeholder="如 2.2000" inputmode="decimal" step="0.0001" oninput="onRecIn()"></div>
       <div class="rf-s"><span class="rf-l">卖出份额</span><input class="rf-in" id="rSS" placeholder="如 10000" inputmode="numeric" oninput="onRecIn()"></div>
       <div class="rf-s"><span class="rf-l">申购金额 <span class="rf-fetch" onclick="fillSubAmt()">[ 计算建议金额 ]</span></span><input class="rf-in" id="rSub" placeholder="自动计算或手动输入" inputmode="decimal" step="0.01" oninput="onRecIn()"></div>
-      <div class="rf-s"><span class="rf-l">基金净值 <span class="rf-fetch" onclick="doFetch()">[ 获取当日净值 ]</span> <span class="rf-fetch" onclick="doFetchHist()">[ 按日期获取 ]</span></span><input class="rf-in" id="rNav" placeholder="输入或获取净值" inputmode="decimal" step="0.0001" oninput="onRecIn()"></div><div id="navStatus" style="font-family:var(--fM);font-size:.65rem;margin-top:4px;"></div>
-
+      <div class="rf-s"><span class="rf-l">基金净值 <span class="rf-fetch" onclick="doFetch()">[ 获取当日净值 ]</span> <span class="rf-fetch" onclick="doFetchHist()">[ 按日期获取 ]</span></span><input class="rf-in" id="rNav" placeholder="输入或获取净值" inputmode="decimal" step="0.0001" oninput="onRecIn()"></div>
     `}
+    <div id="navStatus" style="font-family:var(--fM);font-size:.65rem;margin-top:4px;"></div>
     <div class="rf-s"><span class="rf-l">备注</span><input class="rf-in" id="rNote" placeholder="选填"></div>
     <div id="rPreview"></div>
     <button class="rf-submit primary" onclick="submitTx()">确认记录</button>`;
   onRecChg();
 }
 
+
 function setRecMode(m){recMode=m;rRec()}
 
 function onRecChg(){
-  const fc=document.getElementById('rFund')?.value,ac=document.getElementById('rAcc')?.value;
-  const h=document.getElementById('rAvail');if(!fc||!ac||!h)return;
-  const a=avail(fc,ac),t=totalPos(fc,ac);
-  h.innerHTML=`<div class="rf-hint ${a===0?'err':'ok'}">可用 ${fmtI(a)} 份 / 总持仓 ${fmtI(t)} 份</div>`;
+  const fc=document.getElementById('rFund')?.value;
+  const accs=getSelectedAccs();
+  const h=document.getElementById('rAvail');if(!fc||!h)return;
+  if(!accs.length){h.innerHTML=`<div class="rf-hint warn">请选择至少一个账户</div>`;onRecIn();return}
+  var ta=0,tp2=0;
+  for(var i=0;i<accs.length;i++){ta+=avail(fc,accs[i]);tp2+=totalPos(fc,accs[i])}
+  h.innerHTML=`<div class="rf-hint ${ta===0?'err':'ok'}">可用 ${fmtI(ta)} 份 / 总持仓 ${fmtI(tp2)} 份</div>`;
   onRecIn();
 }
+
 
 function onRecIn(){
   var _ns=document.getElementById('navStatus');if(_ns)_ns.innerHTML='';
@@ -465,30 +484,39 @@ function doFetchHist(){
 
 
 function submitTx(){
-  const fc=document.getElementById('rFund')?.value,ac=document.getElementById('rAcc')?.value;
+  const fc=document.getElementById('rFund')?.value;
+  const accs=getSelectedAccs();
   const date=document.getElementById('rDate')?.value,time=document.getElementById('rTime')?.value;
   const note=document.getElementById('rNote')?.value||'';
-  if(!fc||!ac||!date){showToast('请填写必要信息');return}
-  const tx={id:gid(),date,time,fundCode:fc,accountId:ac,mode:recMode,note,buyPrice:0,buyShares:0,redeemShares:0,redeemNav:0,sellPrice:0,sellShares:0,subscribeAmount:0,subscribeNav:0};
+  if(!fc||!accs.length||!date){showToast('请填写必要信息');return}
   if(recMode==='discount'){
-    tx.buyPrice=parseFloat(document.getElementById('rBP')?.value)||0;
-    tx.buyShares=parseFloat(document.getElementById('rBS')?.value)||0;
-    tx.redeemShares=parseFloat(document.getElementById('rRS')?.value)||tx.buyShares;
-    tx.redeemNav=parseFloat(document.getElementById('rNav')?.value)||0;
-    if(!tx.buyPrice||!tx.buyShares){showToast('请输入买入价格和份额');return}
+    var bp=parseFloat(document.getElementById('rBP')?.value)||0;
+    var bs=parseFloat(document.getElementById('rBS')?.value)||0;
+    var rs=parseFloat(document.getElementById('rRS')?.value)||bs;
+    var nav=parseFloat(document.getElementById('rNav')?.value)||0;
+    if(!bp||!bs){showToast('请输入买入价格和份额');return}
+    for(var i=0;i<accs.length;i++){
+      if(rs>avail(fc,accs[i])){showToast(getAcc(accs[i]).name+' 可用不足（'+fmtI(avail(fc,accs[i]))+'）');return}
+      D.txs.push({id:gid(),date,time,fundCode:fc,accountId:accs[i],mode:'discount',note:note,buyPrice:bp,buyShares:bs,redeemShares:rs,redeemNav:nav,sellPrice:0,sellShares:0,subscribeAmount:0,subscribeNav:0});
+    }
   }else{
-    tx.sellPrice=parseFloat(document.getElementById('rSP')?.value)||0;
-    tx.sellShares=parseFloat(document.getElementById('rSS')?.value)||0;
-    tx.subscribeAmount=parseFloat(document.getElementById('rSub')?.value)||0;
-    tx.subscribeNav=parseFloat(document.getElementById('rNav')?.value)||0;
-    if(!tx.sellPrice||!tx.sellShares){showToast('请输入卖出价格和份额');return}
-    if(tx.sellShares>avail(fc,ac)){showToast('卖出份额超过可用量');return}
+    var sp=parseFloat(document.getElementById('rSP')?.value)||0;
+    var ss=parseFloat(document.getElementById('rSS')?.value)||0;
+    var sub=parseFloat(document.getElementById('rSub')?.value)||0;
+    var nav2=parseFloat(document.getElementById('rNav')?.value)||0;
+    if(!sp||!ss){showToast('请输入卖出价格和份额');return}
+    for(var j=0;j<accs.length;j++){
+      if(ss>avail(fc,accs[j])){showToast(getAcc(accs[j]).name+' 可用不足（'+fmtI(avail(fc,accs[j]))+'）');return}
+      D.txs.push({id:gid(),date,time,fundCode:fc,accountId:accs[j],mode:'premium',note:note,buyPrice:0,buyShares:0,redeemShares:0,redeemNav:0,sellPrice:sp,sellShares:ss,subscribeAmount:sub,subscribeNav:nav2});
+    }
   }
-  D.txs.push(tx);sv();render();showToast('记录成功');
-  if(recMode==='discount'){['rBP','rBS','rRS','rNav','rNote'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''})}
-  else{['rSP','rSS','rSub','rNav','rNote'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''})}
+  sv();render();showToast('记录成功'+(accs.length>1?'（'+accs.length+'个账户）':''));
+  if(recMode==='discount'){['rBP','rBS','rRS','rNav','rNote'].forEach(id=>{var e=document.getElementById(id);if(e)e.value=''})}
+  else{['rSP','rSS','rSub','rNav','rNote'].forEach(id=>{var e=document.getElementById(id);if(e)e.value=''})}
   document.getElementById('rPreview').innerHTML='';
+  document.getElementById('navStatus').innerHTML='';
 }
+
 
 let histF='all';
 function rHist(){
