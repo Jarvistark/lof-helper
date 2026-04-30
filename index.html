@@ -125,7 +125,7 @@ select.rf-in{appearance:none;-webkit-appearance:none;background-image:url("data:
 <body>
 <div class="app">
   <div class="header">
-    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v5.5</span></div></div>
+    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v5.6</span></div></div>
     <div class="summary-bar" id="sumBar"></div>
   </div>
   <nav class="tab-bar" id="tabBar">
@@ -641,6 +641,29 @@ document.getElementById('tabBar').addEventListener('click',e=>{const b=e.target.
 const mf={name:'LOF套利助手',short_name:'LOF套利',display:'standalone',background_color:'#08090d',theme_color:'#08090d',icons:[{src:'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="#08090d"/><text x="96" y="125" text-anchor="middle" font-size="80" font-family="sans-serif" font-weight="700" fill="#f59e0b">L</text></svg>'),sizes:'192x192',type:'image/svg+xml'}]};
 const mb=new Blob([JSON.stringify(mf)],{type:'application/json'});const ml=document.createElement('link');ml.rel='manifest';ml.href=URL.createObjectURL(mb);document.head.appendChild(ml);
 render();
+setTimeout(function(){
+  var pending=D.txs.filter(function(t){
+    if(t.mode==='discount'&&(!t.redeemNav||t.redeemNav<=0))return true;
+    if(t.mode==='premium'&&(!t.subscribeNav||t.subscribeNav<=0))return true;
+    return false;
+  });
+  if(!pending.length)return;
+  showToast('自动补填净值...('+pending.length+'条)');
+  var idx=0,filled=0;
+  function tryNext(){
+    if(idx>=pending.length){
+      if(filled>0){sv();render();showToast('已补填'+filled+'条净值')}
+      return;
+    }
+    var tx=pending[idx++];
+    fetchHistNav(tx.fundCode,tx.date).then(function(d){
+      if(tx.mode==='discount')tx.redeemNav=d.nav;else tx.subscribeNav=d.nav;
+      filled++;
+    }).catch(function(){}).then(function(){setTimeout(tryNext,1500)});
+  }
+  tryNext();
+},2000);
+  
 </script>
 </body>
 </html>
