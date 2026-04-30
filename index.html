@@ -127,7 +127,7 @@ select.rf-in{appearance:none;-webkit-appearance:none;background-image:url("data:
 <body>
 <div class="app">
   <div class="header">
-    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v5.7</span></div></div>
+    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v5.8</span></div></div>
     <div class="summary-bar" id="sumBar"></div>
   </div>
   <nav class="tab-bar" id="tabBar">
@@ -529,7 +529,8 @@ function rHist(){
     const f=getFund(t.fundCode),a=getAcc(t.accountId);const pnl=calcPnL(t);const comm=calcComm(t);
     const tag=t.mode==='discount'?`<span class="h-tag disc">折价</span>`:`<span class="h-tag prem">溢价</span>`;
     let pnlH=pnl!==null?`<span class="h-pnl ${pnlCls(pnl)}">${pnlSign(pnl)}¥${fmtM(pnl)}</span>`:`<span class="h-pnl na">待净值</span>`;
-    let rows=`<div class="h-row"><span>日期</span><span>${fmtD(t.date)} ${t.time||''} · ${a?a.name:''}</span></div>`;
+    let rows=`<div class="h-row"><span>日期</span><span>${fmtD(t.date)} ${t.time||''}</span></div>`;
+    if(a)rows+=`<div class="h-row"><span>账户</span><span style="color:var(--accent);font-weight:500">${a.name}</span></div>`;
     if(t.mode==='discount'){
       rows+=`<div class="h-row"><span>买入</span><span>¥${t.buyPrice.toFixed(4)} × ${fmtI(t.buyShares)} = ¥${fmtM(t.buyPrice*t.buyShares)}</span></div>`;
       rows+=`<div class="h-row"><span>买入佣金</span><span>¥${fmtM(comm)}</span></div>`;
@@ -562,15 +563,27 @@ function editTx(id){
   document.querySelector('[data-t="rec"]').click();
   setTimeout(()=>{rRec();
     document.getElementById('rFund').value=tx.fundCode;
-    document.getElementById('rAcc').value=tx.accountId;
+    // 激活对应账户标签
+    var chips=document.querySelectorAll('#rAccWrap .acc-chip');
+    for(var i=0;i<chips.length;i++){if(chips[i].dataset.id===tx.accountId)chips[i].classList.add('active')}
     document.getElementById('rDate').value=tx.date;
     document.getElementById('rTime').value=tx.time||'';
     document.getElementById('rNote').value=tx.note||'';
-    if(tx.mode==='discount'){document.getElementById('rBP').value=tx.buyPrice||'';document.getElementById('rBS').value=tx.buyShares||'';document.getElementById('rRS').value=tx.redeemShares||'';if(tx.redeemNav>0)document.getElementById('rNav').value=tx.redeemNav}
-    else{document.getElementById('rSP').value=tx.sellPrice||'';document.getElementById('rSS').value=tx.sellShares||'';document.getElementById('rSub').value=tx.subscribeAmount||'';if(tx.subscribeNav>0)document.getElementById('rNav').value=tx.subscribeNav}
+    if(tx.mode==='discount'){
+      var bp=document.getElementById('rBP');if(bp)bp.value=tx.buyPrice||'';
+      var bs=document.getElementById('rBS');if(bs)bs.value=tx.buyShares||'';
+      var rs=document.getElementById('rRS');if(rs)rs.value=tx.redeemShares||'';
+      var nv=document.getElementById('rNav');if(nv&&tx.redeemNav>0)nv.value=tx.redeemNav;
+    }else{
+      var sp=document.getElementById('rSP');if(sp)sp.value=tx.sellPrice||'';
+      var ss=document.getElementById('rSS');if(ss)ss.value=tx.sellShares||'';
+      var su=document.getElementById('rSub');if(su)su.value=tx.subscribeAmount||'';
+      var nv2=document.getElementById('rNav');if(nv2&&tx.subscribeNav>0)nv2.value=tx.subscribeNav;
+    }
     onRecChg();D.txs=D.txs.filter(t=>t.id!==id);sv();showToast('已加载，修改后重新提交');
   },100);
 }
+
 
 function delTx(id){showCfm('确定删除这条记录？',()=>{D.txs=D.txs.filter(t=>t.id!==id);sv();render();showToast('已删除')})}
 
