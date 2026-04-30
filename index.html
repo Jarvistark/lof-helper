@@ -49,7 +49,9 @@ input,select,textarea,button{font-family:inherit;font-size:inherit;color:inherit
 .fc-tl-r{display:flex;align-items:center;gap:8px;padding:4px 0;font-family:var(--fM);font-size:.72rem}
 .fc-tl-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0}
 .fc-tl-date{color:var(--txt2);min-width:50px}.fc-tl-sh{color:var(--txt);font-weight:500}.fc-tl-d{color:var(--mut);margin-left:auto;font-size:.62rem}
-.fc-accs{margin-bottom:12px}.fc-acc-r{display:flex;justify-content:space-between;font-family:var(--fM);font-size:.7rem;padding:3px 0;color:var(--txt2)}.fc-acc-av{color:var(--green);font-weight:500}
+.fc-accs{margin-bottom:12px}.fc-acc-r{display:grid;grid-template-columns:1fr auto auto;gap:8px;font-family:var(--fM);font-size:.7rem;padding:3px 0;color:var(--txt2);align-items:center}
+.fc-acc-ttl{text-align:right}
+.fc-acc-av{text-align:right;color:var(--green);font-weight:500}
 .fc-btns{display:flex;gap:8px}
 .fc-btn{flex:1;font-family:var(--fM);font-size:.7rem;font-weight:500;padding:8px 0;border:1px solid var(--bd);border-radius:var(--rx);color:var(--txt2);cursor:pointer;text-align:center;transition:all .2s}
 .fc-btn:active{background:var(--s2)}.fc-btn.pri{background:var(--accentG);border-color:rgba(245,158,11,.25);color:var(--accent)}
@@ -127,7 +129,7 @@ select.rf-in{appearance:none;-webkit-appearance:none;background-image:url("data:
 <body>
 <div class="app">
   <div class="header">
-    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v5.9</span></div></div>
+    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v6.0</span></div></div>
     <div class="summary-bar" id="sumBar"></div>
   </div>
   <nav class="tab-bar" id="tabBar">
@@ -309,7 +311,7 @@ function rDash(){
   if(!fs.length){el.innerHTML=`<div class="empty"><div class="empty-i">📊</div><div class="empty-t">还没有数据</div><div class="empty-d">去「设置」添加基金和账户<br>然后录入初始持仓即可开始</div></div>`;return}
   el.innerHTML=fs.map(f=>{
     const av=availAll(f.code),ttl=totalAll(f.code),lk=lockedAll(f.code),pnl=fundPnL(f.code);const tl=unlockTL(f.code);
-    const accR=D.accounts.filter(a=>totalPos(f.code,a.id)>0).map(a=>`<div class="fc-acc-r"><span>${a.name} ${fmtI(totalPos(f.code,a.id))}份</span><span class="fc-acc-av">可用 ${fmtI(avail(f.code,a.id))}</span></div>`).join('');
+    const accR=D.accounts.filter(a=>totalPos(f.code,a.id)>0).map(a=>`<div class="fc-acc-r"><span>${a.name}</span><span class="fc-acc-ttl">${fmtI(totalPos(f.code,a.id))}份</span><span class="fc-acc-av">可用 ${fmtI(avail(f.code,a.id))}</span></div>`).join('');
     const tlR=tl.slice(0,4).map(t=>`<div class="fc-tl-r"><span class="fc-tl-dot"></span><span class="fc-tl-date">${fmtD(t.date)}</span><span class="fc-tl-sh">${fmtI(t.shares)} 份</span><span class="fc-tl-d">${t.days}天后</span></div>`).join('');
     const pc=pnlCls(pnl);
     return`<div class="fc"><div class="fc-hd"><div><div class="fc-code">${f.code}</div><div class="fc-name">${f.name}</div></div><div class="fc-tag">${f.holdDays}天 · ${(f.redeemFeeRate*100).toFixed(1)}%</div></div><div class="fc-row"><span class="fc-avail">${fmtI(av)}</span><span class="fc-avail-l">可操作份额</span><span class="fc-pnl ${pc}">${pnl!==0?pnlSign(pnl)+'¥'+fmtM(pnl):'累计 ¥0.00'}</span></div><div class="fc-stats"><div class="fc-st"><div class="fc-st-v">${fmtI(ttl)}</div><div class="fc-st-l">总持仓</div></div><div class="fc-st"><div class="fc-st-v" style="color:var(--orange)">${fmtI(lk)}</div><div class="fc-st-l">锁定</div></div><div class="fc-st"><div class="fc-st-v">${D.accounts.filter(a=>totalPos(f.code,a.id)>0).length}</div><div class="fc-st-l">账户</div></div></div>${tlR?`<div class="fc-tl"><div class="fc-tl-t">解锁时间线</div>${tlR}${tl.length>4?`<div class="fc-tl-r" style="color:var(--mut);font-size:.6rem">还有 ${tl.length-4} 批...</div>`:''}</div>`:''}${accR?`<div class="fc-accs">${accR}</div>`:''}<div class="fc-btns"><button class="fc-btn pri" onclick="goRec('${f.code}','discount')">折价记账</button><button class="fc-btn" onclick="goRec('${f.code}','premium')">溢价记账</button></div></div>`}).join('')}
