@@ -189,23 +189,23 @@ function commLabel(){const r=commRate()*10000;return r%1===0?'万'+r:'万'+r.toF
 
 function fetchHistNav(code,date){
   return new Promise((res,rej)=>{
-    const cb='_hn_'+Date.now();
+    const cb='jQuery'+Date.now();
     const t=setTimeout(()=>{delete window[cb];rej()},8000);
-    window[cb]=d=>{clearTimeout(t);delete window[cb];try{if(d?.Data?.LSJZList?.length>0){res({nav:parseFloat(d.Data.LSJZList[0].DWJZ),date:d.Data.LSJZList[0].FSRQ})}else rej()}catch{rej()}};
+    window[cb]=d=>{clearTimeout(t);delete window[cb];try{if(d&&d.Data&&d.Data.LSJZList&&d.Data.LSJZList.length>0){res({nav:parseFloat(d.Data.LSJZList[0].DWJZ),date:d.Data.LSJZList[0].FSRQ})}else rej()}catch(e){rej()}};
     const s=document.createElement('script');
-    s.src=`https://api.fund.eastmoney.com/f10/lsjz?callback=${cb}&fundCode=${code}&pageIndex=1&pageSize=5&startDate=${addD(date,-5)}&endDate=${date}`;
+    s.src='https://api.fund.eastmoney.com/f10/lsjz?callback='+cb+'&fundCode='+code+'&pageIndex=1&pageSize=5&startDate='+addD(date,-5)+'&endDate='+date;
     s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();rej()};s.onload=()=>s.remove();
     document.head.appendChild(s);
   })
 }
+
 function fetchRTNav(code){
   return new Promise((res,rej)=>{
-    const cb='_rt_'+Date.now();
-    const t=setTimeout(()=>{delete window[cb];rej()},8000);
-    window[cb]=d=>{clearTimeout(t);delete window[cb];const g=parseFloat(d.gsz),j=parseFloat(d.dwjz);res({nav:g>0?g:j,date:g>0?d.gzrq:d.jzrq,est:g>0})};
+    const t=setTimeout(()=>{window.jsonpgz=null;rej()},8000);
+    window.jsonpgz=d=>{clearTimeout(t);window.jsonpgz=null;const g=parseFloat(d.gsz),j=parseFloat(d.dwjz);res({nav:g>0?g:j,date:g>0?d.gzrq:d.jzrq,est:g>0})};
     const s=document.createElement('script');
     s.src=`https://fundgz.1234567.com.cn/js/${code}.js?rt=${Date.now()}`;
-    s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();rej()};s.onload=()=>s.remove();
+    s.onerror=()=>{clearTimeout(t);window.jsonpgz=null;s.remove();rej()};s.onload=()=>s.remove();
     document.head.appendChild(s);
   })
 }
