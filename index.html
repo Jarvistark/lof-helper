@@ -124,12 +124,23 @@ select.rf-in{appearance:none;-webkit-appearance:none;background-image:url("data:
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 .acc-chip{font-family:var(--fM);font-size:.65rem;padding:6px 12px;border:1px solid var(--bd);border-radius:20px;color:var(--mut);cursor:pointer;transition:all .2s;user-select:none;-webkit-user-select:none}
 .acc-chip.active{border-color:var(--accent);color:var(--accent);background:var(--accentG)}
+.help-content{font-family:var(--fB);font-size:.82rem;line-height:1.7;color:var(--txt2)}
+.help-content h3{font-family:var(--fD);font-size:1rem;color:var(--txt);margin:18px 0 8px;font-weight:700}
+.help-content h3:first-child{margin-top:0}
+.help-content p{margin:6px 0}
+.help-content table{width:100%;border-collapse:collapse;margin:8px 0;font-family:var(--fM);font-size:.7rem}
+.help-content th{background:var(--s2);color:var(--txt);font-weight:500;text-align:left;padding:6px 8px;border:1px solid var(--bd)}
+.help-content td{padding:6px 8px;border:1px solid var(--bd);color:var(--txt2)}
+.help-content .hl{color:var(--accent);font-weight:500}
+.help-content .hi{background:var(--s2);border-left:3px solid var(--accent);padding:8px 12px;margin:8px 0;border-radius:0 var(--rx) var(--rx) 0;font-size:.75rem}
+.help-content .formula{font-family:var(--fM);font-size:.72rem;background:var(--s2);padding:10px 12px;border-radius:var(--rs);margin:8px 0;color:var(--accent)}
+.help-btn{position:absolute;top:14px;right:50px;width:28px;height:28px;border-radius:14px;border:1px solid var(--bd);color:var(--mut);font-family:var(--fD);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:101;background:var(--bg)}
 </style>
 </head>
 <body>
 <div class="app">
   <div class="header">
-    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v6.2beta</span></div></div>
+    <div class="header-top" style="position:relative"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v5.3</span></div><button class="help-btn" onclick="showHelp()">?</button></div>
     <div class="summary-bar" id="sumBar"></div>
   </div>
   <nav class="tab-bar" id="tabBar">
@@ -611,7 +622,8 @@ function rSet(){
     <div class="sg-t">基金管理</div>${fItems}<button class="sg-add" onclick="showFundMo()">+ 添加基金</button>
     <div class="sg-t">账户管理</div>${aItems}<button class="sg-add" onclick="showAccMo()">+ 添加账户</button>
     <div class="sg-t">初始持仓</div>${pItems}<button class="sg-add" onclick="showIPMo()">+ 录入持仓</button>
-    <div class="sg-t">数据管理</div><div class="sg-db"><button onclick="expData()">导出数据</button><button onclick="impData()">导入数据</button></div>`;
+    <div class="sg-t">数据管理</div><div class="sg-db"><button onclick="expData()">导出数据</button><button onclick="impData()">导入数据</button></div>
+    <div class="sg-t">帮助</div><button class="sg-add" onclick="showHelp()">📖 使用指南</button>`;
 }
 
 function openMo(html){document.getElementById('moBody').innerHTML=`<div class="mo-handle"></div>`+html;document.getElementById('mo').classList.add('show')}
@@ -694,6 +706,60 @@ document.getElementById('tabBar').addEventListener('click',e=>{const b=e.target.
 
 const mf={name:'LOF套利助手',short_name:'LOF套利',display:'standalone',background_color:'#08090d',theme_color:'#08090d',icons:[{src:'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="#08090d"/><text x="96" y="125" text-anchor="middle" font-size="80" font-family="sans-serif" font-weight="700" fill="#f59e0b">L</text></svg>'),sizes:'192x192',type:'image/svg+xml'}]};
 const mb=new Blob([JSON.stringify(mf)],{type:'application/json'});const ml=document.createElement('link');ml.rel='manifest';ml.href=URL.createObjectURL(mb);document.head.appendChild(ml);
+function showHelp(){
+  openMo(`<div class="mo-title">使用指南</div><div class="help-content">
+<h3>套利原理</h3>
+<p>LOF 基金同时在场内（交易所）和场外交易，两者价格经常存在差异，利用这个差异可以套利。</p>
+
+<h3>折价套利（买 + 赎回）</h3>
+<p>当场内价格 <span class="hl">低于</span>基金净值时：</p>
+<p>1. 场内低价<strong>买入</strong>基金份额<br>2. 同日按净值<strong>赎回</strong>相同份额<br>3. 赚取差价</p>
+<div class="formula">净收益 = 赎回金额 - 赎回费 - 买入成本 - 买入佣金<br>
+赎回金额 = 赎回份额 × 净值<br>
+买入成本 = 买入份额 × 场内价格 × (1 + 佣金费率)</div>
+
+<h3>溢价套利（卖 + 申购）</h3>
+<p>当场内价格 <span class="hl">高于</span>基金净值时：</p>
+<p>1. 场内高价<strong>卖出</strong>基金份额<br>2. 同日按净值<strong>申购</strong>（获得更多份额）<br>3. 因净值未知，个人建议采用不赚现金，赚份额方案，份额增加即为收益</p>
+
+<h3>溢价建议申购金额</h3>
+<p>申购时系统会自动计算建议金额：</p>
+<div class="formula">建议申购金额 = 卖出金额 × (1 + 前端费率 - 实际费率)</div>
+<p>以兴全合宜为例：</p>
+<div class="formula">前端费率 1.5%，实际费率 0.15%，差额 1.35%<br>
+卖出 10000 份 × 2.100 = 21000 元<br>
+建议申购 = 21000 × 1.0135 = 21283.50 元</div>
+<div class="hi">为什么多申购一点？因为华宝申购手续费先按 1.5% 扣收，之后退回 1.35%。多申购这部分金额正好覆盖手续费，确保你申购到的份额 ≥ 卖出的份额。如果只申购 21000 元，扣完手续费后实际用于购买份额的钱变少了，获得的份额可能反而会少于卖出的份额，如后续净值上涨，套利就亏了。</div>
+<p>建议金额只是默认值，你可以根据实际情况手动修改。</p>
+
+<h3>份额锁定机制</h3>
+<p>每只基金有一个最低持有天数（如兴全合宜 30 天），持有不满此天数赎回/申购，手续费很高（通常 1.5%），会吃掉利润。</p>
+<p>所以系统会追踪每笔操作的买入/申购份额，锁定 N 天后才计入可操作份额。</p>
+<div class="formula">可操作份额 = 总持仓 - 近 N 天内买入/申购的份额</div>
+
+<h3>费用说明</h3>
+<table>
+<tr><th>费用项</th><th>计算方式</th></tr>
+<tr><td>买入/卖出佣金</td><td>成交金额 × 佣金费率（默认万分之一）</td></tr>
+<tr><td>赎回费</td><td>赎回金额 × 赎回费率（由基金持有天数决定）</td></tr>
+<tr><td>申购费</td><td>先扣前端费率，后退回差额到账户</td></tr>
+</table>
+
+<h3>净值获取</h3>
+<table>
+<tr><th>按钮</th><th>说明</th></tr>
+<tr><td>获取当日净值</td><td>优先获取实际净值，获取不到时使用估算值（会标记 ⚠）</td></tr>
+<tr><td>按日期获取</td><td>查询指定日期的历史实际净值，适合补录旧记录</td></tr>
+</table>
+<div class="hi">估算净值与实际净值可能有偏差，建议以实际净值为准。非交易日无法获取净值。</div>
+
+<h3>操作建议</h3>
+<p>1. <strong>定期导出备份</strong>：设置 → 导出数据，保存 JSON 文件<br>
+2. <strong>净值未公布时可留空</strong>：系统会在下次打开时自动补填<br>
+3. <strong>多账户分别记账</strong>：记账时可多选账户（都等到新高了还没等到溢价套利😭），系统自动为每个账户各创建一条记录<br>
+4. <strong>关注可操作份额</strong>：首页绿色数字为当前可操作份额，不够时需要等解锁</p>
+</div>`);
+}
 render();
 setTimeout(function(){
   var pending=D.txs.filter(function(t){
