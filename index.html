@@ -134,13 +134,12 @@ select.rf-in{appearance:none;-webkit-appearance:none;background-image:url("data:
 .help-content .hl{color:var(--accent);font-weight:500}
 .help-content .hi{background:var(--s2);border-left:3px solid var(--accent);padding:8px 12px;margin:8px 0;border-radius:0 var(--rx) var(--rx) 0;font-size:.75rem}
 .help-content .formula{font-family:var(--fM);font-size:.72rem;background:var(--s2);padding:10px 12px;border-radius:var(--rs);margin:8px 0;color:var(--accent)}
-.help-btn{position:absolute;top:14px;right:50px;width:28px;height:28px;border-radius:14px;border:1px solid var(--bd);color:var(--mut);font-family:var(--fD);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:101;background:var(--bg)}
 </style>
 </head>
 <body>
 <div class="app">
   <div class="header">
-    <div class="header-top" style="position:relative"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v5.3</span></div><button class="help-btn" onclick="showHelp()">?</button></div>
+    <div class="header-top" style="position:relative"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v5.3</span></div></div>
     <div class="summary-bar" id="sumBar"></div>
   </div>
   <nav class="tab-bar" id="tabBar">
@@ -319,7 +318,7 @@ function rSum(){const fs=activeFunds();let tp=0,ta=0,ttl=0;fs.forEach(f=>{tp+=fu
 
 function rDash(){
   const el=document.getElementById('pDash');const fs=activeFunds();
-  if(!fs.length){el.innerHTML=`<div class="empty"><div class="empty-i">📊</div><div class="empty-t">还没有数据</div><div class="empty-d">去「设置」添加基金和账户<br>然后录入初始持仓即可开始</div></div>`;return}
+  if(!fs.length)el.innerHTML=`<div class="empty"><div class="empty-i">📊</div><div class="empty-t">还没有数据</div><div class="empty-d">去「设置」添加基金和账户<br>然后录入初始持仓即可开始</div><button class="rf-submit secondary" style="margin-top:20px;max-width:200px;margin-left:auto;margin-right:auto" onclick="showHelp()">📖 新手使用指南</button></div>`;return
   el.innerHTML=fs.map(f=>{
     const av=availAll(f.code),ttl=totalAll(f.code),lk=lockedAll(f.code),pnl=fundPnL(f.code);const tl=unlockTL(f.code);
     const accR=D.accounts.filter(a=>totalPos(f.code,a.id)>0).map(a=>`<div class="fc-acc-r"><span>${a.name}</span><span class="fc-acc-ttl">${fmtI(totalPos(f.code,a.id))}份</span><span class="fc-acc-av">可用 ${fmtI(avail(f.code,a.id))}</span></div>`).join('');
@@ -708,42 +707,61 @@ const mf={name:'LOF套利助手',short_name:'LOF套利',display:'standalone',bac
 const mb=new Blob([JSON.stringify(mf)],{type:'application/json'});const ml=document.createElement('link');ml.rel='manifest';ml.href=URL.createObjectURL(mb);document.head.appendChild(ml);
 function showHelp(){
   openMo(`<div class="mo-title">使用指南</div><div class="help-content">
-<h3>套利原理</h3>
-<p>LOF 基金同时在场内（交易所）和场外交易，两者价格经常存在差异，利用这个差异可以套利。</p>
 
-<h3>折价套利（买 + 赎回）</h3>
-<p>当场内价格 <span class="hl">低于</span>基金净值时：</p>
-<p>1. 场内低价<strong>买入</strong>基金份额<br>2. 同日按净值<strong>赎回</strong>相同份额<br>3. 赚取差价</p>
-<div class="formula">净收益 = 赎回金额 - 赎回费 - 买入成本 - 买入佣金<br>
-赎回金额 = 赎回份额 × 净值<br>
-买入成本 = 买入份额 × 场内价格 × (1 + 佣金费率)</div>
+<h3>什么是 LOF 套利</h3>
+<p>LOF 基金同时在场内（交易所）和场外交易，两者价格经常存在差异，利用这个差价可以套利。</p>
+<p><strong>折价套利</strong>：场内价格 <span class="hl">低于</span> 净值 → 场内买入，按净值赎回，赚差价</p>
+<p><strong>溢价套利</strong>：场内价格 <span class="hl">高于</span> 净值 → 场内卖出，按净值申购，赚份额</p>
+<div class="hi">核心约束：份额需持有满 N 天（如兴全合宜 30 天），否则赎回/申购费率高达 1.5%，会吃掉利润。系统自动追踪每笔操作的锁定状态。</div>
 
-<h3>溢价套利（卖 + 申购）</h3>
-<p>当场内价格 <span class="hl">高于</span>基金净值时：</p>
-<p>1. 场内高价<strong>卖出</strong>基金份额<br>2. 同日按净值<strong>申购</strong>（获得更多份额）<br>3. 因净值未知，个人建议采用不赚现金，赚份额方案，份额增加即为收益</p>
+<h3>费用计算</h3>
+<div class="formula">折价净收益 = 赎回份额 × 净值 × (1 - 赎回费率) - 买入份额 × 买入价 × (1 + 佣金费率)</div>
+<div class="formula">溢价净收益 = 卖出收入 × (1 - 佣金费率) - 申购金额 + 退款 + 多余份额 × 净值</div>
+<table>
+<tr><th>费用项</th><th>说明</th></tr>
+<tr><td>买入/卖出佣金</td><td>成交金额 × 佣金费率（默认万分之一）</td></tr>
+<tr><td>赎回费</td><td>赎回金额 × 赎回费率（由持有天数决定）</td></tr>
+<tr><td>申购费</td><td>先按前端费率全额扣收，后退回差额到账户</td></tr>
+</table>
 
 <h3>溢价建议申购金额</h3>
-<p>申购时系统会自动计算建议金额：</p>
+<p>点「计算建议金额」，系统自动计算：</p>
 <div class="formula">建议申购金额 = 卖出金额 × (1 + 前端费率 - 实际费率)</div>
-<p>以兴全合宜为例：</p>
-<div class="formula">前端费率 1.5%，实际费率 0.15%，差额 1.35%<br>
-卖出 10000 份 × 2.100 = 21000 元<br>
-建议申购 = 21000 × 1.0135 = 21283.50 元</div>
-<div class="hi">为什么多申购一点？因为华宝申购手续费先按 1.5% 扣收，之后退回 1.35%。多申购这部分金额正好覆盖手续费，确保你申购到的份额 ≥ 卖出的份额。如果只申购 21000 元，扣完手续费后实际用于购买份额的钱变少了，获得的份额可能反而会少于卖出的份额，如后续净值上涨，套利就亏了。</div>
-<p>建议金额只是默认值，你可以根据实际情况手动修改。</p>
+<p>举例：卖出 10000 份 × 2.100 = 21000 元，前端费率 1.5%，实际费率 0.15%</p>
+<div class="formula">建议申购 = 21000 × 1.0135 = 21283.50 元</div>
+<div class="hi">为什么要多申购？因为申购手续费先按 1.5% 全额扣收，之后退回 1.35%。多申购的金额正好覆盖手续费，确保最终获得的份额 ≥ 卖出的份额。如果只申购 21000 元，扣完手续费后实际购买份额的钱变少了，可能反而会少拿份额。建议金额只是默认值，可以根据实际情况手动修改。</div>
 
-<h3>份额锁定机制</h3>
-<p>每只基金有一个最低持有天数（如兴全合宜 30 天），持有不满此天数赎回/申购，手续费很高（通常 1.5%），会吃掉利润。</p>
-<p>所以系统会追踪每笔操作的买入/申购份额，锁定 N 天后才计入可操作份额。</p>
-<div class="formula">可操作份额 = 总持仓 - 近 N 天内买入/申购的份额</div>
+<h3>首次使用三步走</h3>
+<p><strong>第一步：添加账户</strong><br>设置 → 账户管理 → 添加你使用的账户（如"都等到新高了"、"何时有溢价套利"）</p>
+<p><strong>第二步：添加基金</strong><br>设置 → 基金管理 → 填写基金代码、名称、持有天数（不是你持有天数，是合宜30天，其它7天）、赎回费率（商业0.6%，其它0.5%）、申购费率</p>
+<p><strong>第三步：录入持仓</strong><br>设置 → 初始持仓 → 选择基金和账户，填入当前持有的总份额</p>
+<p>完成后首页就能看到每只基金的可操作份额了。</p>
 
-<h3>费用说明</h3>
-<table>
-<tr><th>费用项</th><th>计算方式</th></tr>
-<tr><td>买入/卖出佣金</td><td>成交金额 × 佣金费率（默认万分之一）</td></tr>
-<tr><td>赎回费</td><td>赎回金额 × 赎回费率（由基金持有天数决定）</td></tr>
-<tr><td>申购费</td><td>先扣前端费率，后退回差额到账户</td></tr>
-</table>
+<h3>记录一笔折价套利</h3>
+<p>1. 首页点基金下方的「折价记账」，或切到记账页手动选基金</p>
+<p>2. 选择账户（支持多选，同一操作在多个账户执行时只需记一次）</p>
+<p>3. 填入<strong>场内买入价格</strong>和<strong>份额</strong></p>
+<p>4. <strong>赎回份额</strong>默认同买入，可手动修改</p>
+<p>5. 获取净值：点「获取当日净值」或「按日期获取」，也可手动输入或留空</p>
+<p>6. 下方实时预览收益，确认无误后点「确认记录」</p>
+<div class="hi">净值未公布时可以留空提交，下次打开页面系统会自动补填。</div>
+
+<h3>记录一笔溢价套利</h3>
+<p>1. 选择「溢价套利（卖+申）」模式</p>
+<p>2. 填入<strong>场内卖出价格</strong>和<strong>份额</strong></p>
+<p>3. 点「计算建议金额」自动填入申购金额，也可手动修改</p>
+<p>4. 获取净值后预览收益，确认提交</p>
+
+<h3>首页怎么看</h3>
+<p><strong>绿色大数字</strong>：当前可操作份额（持有已满 N 天）</p>
+<p><strong>橙色数字</strong>：锁定份额（未满 N 天，暂不可操作）</p>
+<p><strong>累计收益</strong>：红色 = 赚钱，绿色 = 亏钱</p>
+<p><strong>解锁时间线</strong>：每批份额的解锁日期和剩余天数</p>
+<p><strong>账户行</strong>：每只基金在各账户的持仓、可用量</p>
+
+<h3>明细和筛选</h3>
+<p>上方两行筛选栏可按<strong>基金</strong>和<strong>账户</strong>组合筛选。</p>
+<p>每条记录可编辑、删除，未填净值的记录有「填净值」按钮。</p>
 
 <h3>净值获取</h3>
 <table>
@@ -751,15 +769,15 @@ function showHelp(){
 <tr><td>获取当日净值</td><td>优先获取实际净值，获取不到时使用估算值（会标记 ⚠）</td></tr>
 <tr><td>按日期获取</td><td>查询指定日期的历史实际净值，适合补录旧记录</td></tr>
 </table>
-<div class="hi">估算净值与实际净值可能有偏差，建议以实际净值为准。非交易日无法获取净值。</div>
+<div class="hi">估算净值可能与实际净值有偏差，建议以实际净值为准。非交易日无法获取净值。</div>
 
-<h3>操作建议</h3>
-<p>1. <strong>定期导出备份</strong>：设置 → 导出数据，保存 JSON 文件<br>
-2. <strong>净值未公布时可留空</strong>：系统会在下次打开时自动补填<br>
-3. <strong>多账户分别记账</strong>：记账时可多选账户（都等到新高了还没等到溢价套利😭），系统自动为每个账户各创建一条记录<br>
-4. <strong>关注可操作份额</strong>：首页绿色数字为当前可操作份额，不够时需要等解锁</p>
+<h3>数据安全</h3>
+<p>所有数据存在浏览器本地，<strong>清除浏览器数据会丢失记录！！！</strong>。</p>
+<p>建议定期：设置 → 导出数据 → 保存 JSON 文件。</p>
+<p>换设备或清空浏览器后：设置 → 导入数据 → 选择 JSON 文件恢复。</p>
 </div>`);
 }
+
 render();
 setTimeout(function(){
   var pending=D.txs.filter(function(t){
