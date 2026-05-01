@@ -317,14 +317,56 @@ function rDate(){const[y,m,d]=today().split('-');const w=['日','一','二','三
 function rSum(){const fs=activeFunds();let tp=0,ta=0,ttl=0;fs.forEach(f=>{tp+=fundPnL(f.code);ta+=availAll(f.code);ttl+=totalAll(f.code)});const cls=tp>0?'up':tp<0?'dn':'a';document.getElementById('sumBar').innerHTML=`<div class="s-card"><div class="s-val">${fmtI(ttl)}</div><div class="s-lbl">总持仓</div></div><div class="s-card"><div class="s-val a">${fmtI(ta)}</div><div class="s-lbl">可操作</div></div><div class="s-card"><div class="s-val ${cls}">${pnlSign(tp)}¥${fmtM(tp)}</div><div class="s-lbl">累计收益</div></div>`}
 
 function rDash(){
-  const el=document.getElementById('pDash');const fs=activeFunds();
-  if(!fs.length)el.innerHTML=`<div class="empty"><div class="empty-i">📊</div><div class="empty-t">还没有数据</div><div class="empty-d">去「设置」添加基金和账户<br>然后录入初始持仓即可开始</div><button class="rf-submit secondary" style="margin-top:20px;max-width:200px;margin-left:auto;margin-right:auto" onclick="showHelp()">📖 新手使用指南</button></div>`;return
-  el.innerHTML=fs.map(f=>{
-    const av=availAll(f.code),ttl=totalAll(f.code),lk=lockedAll(f.code),pnl=fundPnL(f.code);const tl=unlockTL(f.code);
-    const accR=D.accounts.filter(a=>totalPos(f.code,a.id)>0).map(a=>`<div class="fc-acc-r"><span>${a.name}</span><span class="fc-acc-ttl">${fmtI(totalPos(f.code,a.id))}份</span><span class="fc-acc-av">可用 ${fmtI(avail(f.code,a.id))}</span></div>`).join('');
-    const tlR=tl.slice(0,4).map(t=>`<div class="fc-tl-r"><span class="fc-tl-dot"></span><span class="fc-tl-date">${fmtD(t.date)}</span><span class="fc-tl-sh">${fmtI(t.shares)} 份</span><span class="fc-tl-d">${t.days}天后</span></div>`).join('');
-    const pc=pnlCls(pnl);
-    return`<div class="fc"><div class="fc-hd"><div><div class="fc-code">${f.code}</div><div class="fc-name">${f.name}</div></div><div class="fc-tag">${f.holdDays}天 · ${(f.redeemFeeRate*100).toFixed(1)}%</div></div><div class="fc-row"><span class="fc-avail">${fmtI(av)}</span><span class="fc-avail-l">可操作份额</span><span class="fc-pnl ${pc}">${pnl!==0?pnlSign(pnl)+'¥'+fmtM(pnl):'累计 ¥0.00'}</span></div><div class="fc-stats"><div class="fc-st"><div class="fc-st-v">${fmtI(ttl)}</div><div class="fc-st-l">总持仓</div></div><div class="fc-st"><div class="fc-st-v" style="color:var(--orange)">${fmtI(lk)}</div><div class="fc-st-l">锁定</div></div><div class="fc-st"><div class="fc-st-v">${D.accounts.filter(a=>totalPos(f.code,a.id)>0).length}</div><div class="fc-st-l">账户</div></div></div>${tlR?`<div class="fc-tl"><div class="fc-tl-t">解锁时间线</div>${tlR}${tl.length>4?`<div class="fc-tl-r" style="color:var(--mut);font-size:.6rem">还有 ${tl.length-4} 批...</div>`:''}</div>`:''}${accR?`<div class="fc-accs">${accR}</div>`:''}<div class="fc-btns"><button class="fc-btn pri" onclick="goRec('${f.code}','discount')">折价记账</button><button class="fc-btn" onclick="goRec('${f.code}','premium')">溢价记账</button></div></div>`}).join('')}
+  var el=document.getElementById('pDash');
+  var fs=activeFunds();
+  if(!fs.length){
+    el.innerHTML='<div class="empty"><div class="empty-i">📊</div><div class="empty-t">还没有数据</div><div class="empty-d">去「设置」添加基金和账户<br>然后录入初始持仓即可开始</div><button class="rf-submit secondary" style="margin-top:20px;max-width:200px;margin-left:auto;margin-right:auto" onclick="showHelp()">📖 新手使用指南</button></div>';
+    return;
+  }
+  var html='';
+  for(var fi=0;fi<fs.length;fi++){
+    var f=fs[fi];
+    var av=availAll(f.code);
+    var ttl=totalAll(f.code);
+    var lk=lockedAll(f.code);
+    var pnl=fundPnL(f.code);
+    var tl=unlockTL(f.code);
+    var pc=pnlCls(pnl);
+    var pnlStr=pnl!==0?pnlSign(pnl)+'\u00a5'+fmtM(pnl):'累计 \u00a50.00';
+
+    var accR='';
+    for(var ai=0;ai<D.accounts.length;ai++){
+      var a=D.accounts[ai];
+      var at=totalPos(f.code,a.id);
+      if(at>0){
+        accR+='<div class="fc-acc-r"><span>'+a.name+'</span><span class="fc-acc-ttl">'+fmtI(at)+'份</span><span class="fc-acc-av">可用 '+fmtI(avail(f.code,a.id))+'</span></div>';
+      }
+    }
+
+    var tlR='';
+    var tlShow=tl.slice(0,4);
+    for(var ti=0;ti<tlShow.length;ti++){
+      var tt=tlShow[ti];
+      tlR+='<div class="fc-tl-r"><span class="fc-tl-dot"></span><span class="fc-tl-date">'+fmtD(tt.date)+'</span><span class="fc-tl-sh">'+fmtI(tt.shares)+' 份</span><span class="fc-tl-d">'+tt.days+'天后</span></div>';
+    }
+    if(tl.length>4){
+      tlR+='<div class="fc-tl-r" style="color:var(--mut);font-size:.6rem">还有 '+(tl.length-4)+' 批...</div>';
+    }
+
+    var accCount=0;
+    for(var ci=0;ci<D.accounts.length;ci++){if(totalPos(f.code,D.accounts[ci].id)>0)accCount++}
+
+    html+='<div class="fc">';
+    html+='<div class="fc-hd"><div><div class="fc-code">'+f.code+'</div><div class="fc-name">'+f.name+'</div></div><div class="fc-tag">'+f.holdDays+'天 · '+(f.redeemFeeRate*100).toFixed(1)+'%</div></div>';
+    html+='<div class="fc-row"><span class="fc-avail">'+fmtI(av)+'</span><span class="fc-avail-l">可操作份额</span><span class="fc-pnl '+pc+'">'+pnlStr+'</span></div>';
+    html+='<div class="fc-stats"><div class="fc-st"><div class="fc-st-v">'+fmtI(ttl)+'</div><div class="fc-st-l">总持仓</div></div><div class="fc-st"><div class="fc-st-v" style="color:var(--orange)">'+fmtI(lk)+'</div><div class="fc-st-l">锁定</div></div><div class="fc-st"><div class="fc-st-v">'+accCount+'</div><div class="fc-st-l">账户</div></div></div>';
+    if(tlR)html+='<div class="fc-tl"><div class="fc-tl-t">解锁时间线</div>'+tlR+'</div>';
+    if(accR)html+='<div class="fc-accs">'+accR+'</div>';
+    html+='<div class="fc-btns"><button class="fc-btn pri" onclick="goRec(\''+f.code+'\',''discount'')">折价记账</button><button class="fc-btn" onclick="goRec(\''+f.code+'\',''premium'')">溢价记账</button></div>';
+    html+='</div>';
+  }
+  el.innerHTML=html;
+}
 
 function goRec(c,m){document.querySelector('[data-t="rec"]').click();setTimeout(()=>{recMode=m;rRec();const sel=document.getElementById('rFund');if(sel){sel.value=c;sel.dispatchEvent(new Event('change'))};window.scrollTo(0,0)},50)}
 
