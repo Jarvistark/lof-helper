@@ -623,31 +623,38 @@ function fillNavTx(id){
 
 
 function editTx(id){
-  const tx=D.txs.find(t=>t.id===id);if(!tx)return;
+  var tx=D.txs.find(function(t){return t.id===id});
+  if(!tx)return;
   recMode=tx.mode;
   document.querySelector('[data-t="rec"]').click();
-  setTimeout(()=>{rRec();
-    document.getElementById('rFund').value=tx.fundCode;
-    // 激活对应账户标签
-    var chips=document.querySelectorAll('#rAccWrap .acc-chip');
-    for(var i=0;i<chips.length;i++){if(chips[i].dataset.id===tx.accountId)chips[i].classList.add('active')}
-    document.getElementById('rDate').value=tx.date;
-    document.getElementById('rTime').value=tx.time||'';
-    document.getElementById('rNote').value=tx.note||'';
-    if(tx.mode==='discount'){
-      var bp=document.getElementById('rBP');if(bp)bp.value=tx.buyPrice||'';
-      var bs=document.getElementById('rBS');if(bs)bs.value=tx.buyShares||'';
-      var rs=document.getElementById('rRS');if(rs)rs.value=tx.redeemShares||'';
-      var nv=document.getElementById('rNav');if(nv&&tx.redeemNav>0)nv.value=tx.redeemNav;
-    }else{
-      var sp=document.getElementById('rSP');if(sp)sp.value=tx.sellPrice||'';
-      var ss=document.getElementById('rSS');if(ss)ss.value=tx.sellShares||'';
-      var su=document.getElementById('rSub');if(su)su.value=tx.subscribeAmount||'';
-      var nv2=document.getElementById('rNav');if(nv2&&tx.subscribeNav>0)nv2.value=tx.subscribeNav;
-    }
-    onRecChg();D.txs=D.txs.filter(t=>t.id!==id);sv();showToast('已加载，修改后重新提交');
-  },100);
+  setTimeout(function(){
+    rRec();
+    setTimeout(function(){
+      var el;
+      el=document.getElementById('rFund');if(el)el.value=tx.fundCode;
+      var chips=document.querySelectorAll('#rAccWrap .acc-chip');
+      for(var i=0;i<chips.length;i++){if(chips[i].dataset.id===tx.accountId)chips[i].classList.add('active')}
+      el=document.getElementById('rDate');if(el)el.value=tx.date;
+      el=document.getElementById('rNote');if(el)el.value=tx.note||'';
+      if(tx.mode==='discount'){
+        el=document.getElementById('rBP');if(el&&tx.buyPrice>0)el.value=tx.buyPrice;
+        el=document.getElementById('rBS');if(el&&tx.buyShares>0)el.value=tx.buyShares;
+        el=document.getElementById('rRS');if(el&&tx.redeemShares>0)el.value=tx.redeemShares;
+        el=document.getElementById('rNav');if(el&&tx.redeemNav>0)el.value=tx.redeemNav;
+      }else{
+        el=document.getElementById('rSP');if(el&&tx.sellPrice>0)el.value=tx.sellPrice;
+        el=document.getElementById('rSS');if(el&&tx.sellShares>0)el.value=tx.sellShares;
+        el=document.getElementById('rSub');if(el&&tx.subscribeAmount>0)el.value=tx.subscribeAmount;
+        el=document.getElementById('rNav');if(el&&tx.subscribeNav>0)el.value=tx.subscribeNav;
+      }
+      onRecChg();
+      D.txs=D.txs.filter(function(t){return t.id!==id});
+      sv();
+      showToast('已加载，修改后重新提交');
+    },200);
+  },150);
 }
+
 
 
 function delTx(id){showCfm('确定删除这条记录？',()=>{D.txs=D.txs.filter(t=>t.id!==id);sv();render();showToast('已删除')})}
