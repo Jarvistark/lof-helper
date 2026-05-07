@@ -607,6 +607,7 @@ function rHist(){
       if(t.subscribeNav>0){const sh=sharesFromSub(t);rows+=`<div class="h-row"><span>获得份额</span><span>${fmtI(sh)} 份 (多 ${fmtI(sh-t.sellShares)})</span></div>`}
     }
     if(t.note)rows+=`<div class="h-row"><span>备注</span><span>${t.note}</span></div>`;
+    if(pnl!==null){var _cost=t.mode==='discount'?t.buyShares*t.buyPrice*(1+commRate()):t.sellPrice*t.sellShares*(1+commRate());if(_cost>0){var _r=pnl/_cost*100;rows+=`<div class="h-row"><span>收益率</span><span style="color:${_r>=0?'var(--red)':'var(--green)'}">${_r>=0?'+':''}${_r.toFixed(2)}%</span></div>`}}
     return`<div class="h-card"><div class="h-top"><div class="h-fund">${t.fundCode} ${f?f.name:''} ${tag}</div>${pnlH}</div>${rows}<div class="h-acts">${(t.mode==='discount'&&!t.redeemNav)||(t.mode==='premium'&&!t.subscribeNav)?`<button class="h-act" onclick="fillNavTx('${t.id}')">填净值</button>`:''}<button class="h-act" onclick="editTx('${t.id}')">编辑</button><button class="h-act danger" onclick="delTx('${t.id}')">删除</button></div></div>`;
   }).join('');
 }
