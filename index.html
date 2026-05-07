@@ -139,7 +139,7 @@ select.rf-in{appearance:none;-webkit-appearance:none;background-image:url("data:
 <body>
 <div class="app">
   <div class="header">
-    <div class="header-top" style="position:relative"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v6.5beta</span></div></div>
+    <div class="header-top" style="position:relative"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v6.4beta</span></div></div>
     <div class="summary-bar" id="sumBar"></div>
   </div>
   <nav class="tab-bar" id="tabBar">
@@ -307,23 +307,6 @@ function calcComm(tx){
   const cr=commRate();
   if(tx.mode==='discount')return tx.buyShares*tx.buyPrice*cr;
   return tx.sellPrice*tx.sellShares*cr;
-}
-function calcRate(tx){
-  var f=getFund(tx.fundCode);if(!f)return null;
-  var cr=commRate();
-  if(tx.mode==='discount'){
-    if(!tx.redeemNav||tx.redeemNav<=0)return null;
-    var cost=tx.buyShares*tx.buyPrice*(1+cr);
-    if(cost<=0)return null;
-    return (tx.redeemShares*tx.redeemNav*(1-f.redeemFeeRate)-cost)/cost*100;
-  }
-  if(!tx.subscribeNav||tx.subscribeNav<=0)return null;
-  var si=tx.sellPrice*tx.sellShares*(1-cr);
-  var ai=tx.subscribeAmount/(1+f.subFeeRate);
-  var sr=ai/tx.subscribeNav;
-  var ref=ai*(f.subFeeRate-f.subActualFeeRate);
-  var pnl=si-tx.subscribeAmount+ref+(sr-tx.sellShares)*tx.subscribeNav;
-  return si>0?(pnl/si*100):0;
 }
 
 function fundPnL(fc){return D.txs.filter(t=>t.fundCode===fc).reduce((s,t)=>{const p=calcPnL(t);return s+(p||0)},0)}
@@ -609,15 +592,7 @@ function rHist(){
   el.innerHTML=`<div class="h-filter">${fCh}</div><div class="h-filter">${aCh}</div>`+txs.map(t=>{
     const f=getFund(t.fundCode),a=getAcc(t.accountId);const pnl=calcPnL(t);const comm=calcComm(t);
     const tag=t.mode==='discount'?`<span class="h-tag disc">折价</span>`:`<span class="h-tag prem">溢价</span>`;
-    let pnlH;
-    if(pnl!==null){
-      var rate=calcRate(t);
-      var rateStr=rate!==null?' <span style="font-size:.65rem;font-weight:400;opacity:.7">('+pnlSign(rate)+Math.abs(rate).toFixed(2)+'%)</span>':'';
-    ign(rate)+Math.abs(rate).toFixed(2)+'%)</span>':'';
-      pnlH=`<span class="h-pnl ${pnlCls(pnl)}">${pnlSign(pnl)}¥${fmtM(pnl)}${rateStr}</span>`;
-    }else{
-      pnlH=`<span class="h-pnl na">待净值</span>`;
-    }
+    let pnlH=pnl!==null?`<span class="h-pnl ${pnlCls(pnl)}">${pnlSign(pnl)}¥${fmtM(pnl)}</span>`:`<span class="h-pnl na">待净值</span>`;
     let rows=`<div class="h-row"><span>日期</span><span>${fmtD(t.date)} ${t.time||''}</span></div>`;
     if(a)rows+=`<div class="h-row"><span>账户</span><span style="color:var(--accent);font-weight:500">${a.name}</span></div>`;
     if(t.mode==='discount'){
