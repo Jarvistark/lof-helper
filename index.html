@@ -145,7 +145,7 @@ select.rf-in{appearance:none;-webkit-appearance:none;background-image:url("data:
 <body>
 <div class="app">
   <div class="header">
-    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v6.2</span></div></div>
+    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v6.0</span></div></div>
     <div class="summary-bar" id="sumBar"></div>
   </div>
   <nav class="tab-bar" id="tabBar">
@@ -631,6 +631,8 @@ function submitTx(){
       if(rs>avail(fc,accs[i])){showToast(getAcc(accs[i]).name+' 可用不足（'+fmtI(avail(fc,accs[i]))+'）');return}
       var t={};for(var k in tx)t[k]=tx[k];t.id=gid();t.accountId=accs[i];t.buyPrice=bp;t.buyShares=bs;t.redeemShares=rs;t.redeemNav=nav;
       D.txs.push(t);
+    if(window._editingTxId){D.txs=D.txs.filter(function(x){return x.id!==window._editingTxId})}
+	  
     }
     if(nav>0)updateFundNav(fc,nav);
   }else{
@@ -789,7 +791,7 @@ function editTx(id){
       el=document.getElementById('rNav');if(el&&tx.subscribeNav>0)el.value=tx.subscribeNav;
     }
     onRecChg();
-    D.txs=D.txs.filter(function(t){return t.id!==id});sv();
+    window._editingTxId=id;
     showToast('已加载，修改后重新提交');
   },200)},150);
 }
