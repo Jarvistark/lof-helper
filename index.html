@@ -145,7 +145,7 @@ select.rf-in{appearance:none;-webkit-appearance:none;background-image:url("data:
 <body>
 <div class="app">
   <div class="header">
-    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v6.0</span></div></div>
+    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v6.1</span></div></div>
     <div class="summary-bar" id="sumBar"></div>
   </div>
   <nav class="tab-bar" id="tabBar">
@@ -824,6 +824,15 @@ setTimeout(function(){
   }
   tryNext();
 },2000);
+setTimeout(function(){
+  var adjFunds={};
+  D.adjPositions.forEach(function(p){adjFunds[p.fundCode]=true});
+  Object.keys(adjFunds).forEach(function(fc,i){
+    setTimeout(function(){
+      fetchRTNav(fc).then(function(){sv()}).catch(function(){});
+    },i*2000);
+  });
+},8000);
 
 function showHelp(){
   openMo('<div class="mo-title">使用指南</div><div class="help-content"><h3>什么是 LOF 套利</h3><p>LOF 基金同时在场内（交易所）和场外交易，两者价格经常存在差异，利用这个差价可以套利。</p><p><strong>折价套利</strong>：场内价格 <span class="hl">低于</span> 净值 → 场内买入，按净值赎回，赚差价</p><p><strong>溢价套利</strong>：场内价格 <span class="hl">高于</span> 净值 → 场内卖出，按净值申购，赚份额</p><div class="hi">核心约束：份额需持有满 N 天（如兴全合宜 30 天），否则赎回/申购费率高达 1.5%，会吃掉利润。系统自动追踪每笔操作的锁定状态。</div><h3>费用计算</h3><div class="formula">折价净收益 = 赎回份额 × 净值 × (1 - 赎回费率) - 买入份额 × 买入价 × (1 + 佣金费率)</div><div class="formula">溢价净收益 = 卖出收入 × (1 - 佣金费率) - 申购金额 + 退款 + 多余份额 × 净值</div><table><tr><th>费用项</th><th>说明</th></tr><tr><td>买入/卖出佣金</td><td>成交金额 × 佣金费率（默认万分之一）</td></tr><tr><td>赎回费</td><td>赎回金额 × 赎回费率（由持有天数决定）</td></tr><tr><td>申购费</td><td>先按前端费率全额扣收，后退回差额到账户</td></tr></table><h3>溢价建议申购金额</h3><p>点「计算建议金额」，系统自动计算：</p><div class="formula">建议申购金额 = 卖出金额 × (1 + 前端费率 - 实际费率)</div><p>举例：卖出 10000 份 × 2.100 = 21000 元，前端费率 1.5%，实际费率 0.15%</p><div class="formula">建议申购 = 21000 × 1.0135 = 21283.50 元</div><div class="hi">为什么要多申购？因为申购手续费先按 1.5% 全额扣收，之后退回 1.35%。多申购的金额正好覆盖手续费，确保最终获得的份额 ≥ 卖出的份额。</div><h3>套利收益与调整收益</h3><p>系统将收益分为两部分：</p><p><strong>套利收益</strong>：每笔操作中买=赎（或卖=申）匹配部分的收益，这是你真正赚到的差价。</p><p><strong>调整收益</strong>：当买入≠赎回（或卖出≠申购）时，不对等的部分形成一个仓位。系统跟踪这个仓位到当前净值的盈亏。</p><div class="formula">做多仓位盈亏 = (当前净值 - 买入成本) × 份额<br>做空仓位盈亏 = (参考价 - 当前净值) × 份额</div><div class="hi">举例：买入 12000 份 @ 2.100，赎回 10000 份 @ 净值 2.149<br>套利收益 = 10000 份的差价收益<br>调整仓位 = 做多 2000 份，成本 2.100<br>如果当前净值 2.200 → 调整收益 = (2.200-2.100)×2000 = +200<br>如果当前净值 2.000 → 调整收益 = (2.000-2.100)×2000 = -200</div><p>反向操作时（如之前做多，现在多赎回），系统按先进先出自动平仓，已实现盈亏锁定。</p><h3>首次使用三步走</h3><p><strong>第一步：添加账户</strong><br>设置 → 账户管理 → 添加你使用的券商（如"华泰主账户"）</p><p><strong>第二步：添加基金</strong><br>设置 → 基金管理 → 填写基金代码、名称、持有天数、赎回费率、申购费率</p><p><strong>第三步：录入持仓</strong><br>设置 → 初始持仓 → 选择基金和账户，填入当前持有的总份额</p><h3>记录一笔折价套利</h3><p>1. 首页点基金下方的「折价记账」，或切到记账页手动选基金</p><p>2. 选择账户（支持多选，同一操作在多个账户执行时只需记一次）</p><p>3. 填入<strong>场内买入价格</strong>和<strong>份额</strong></p><p>4. <strong>赎回份额</strong>默认同买入，可手动修改</p><p>5. 获取净值：点「获取当日净值」或「按日期获取」，也可手动输入或留空</p><p>6. 下方实时预览收益，确认无误后点「确认记录」</p><div class="hi">净值未公布时可以留空提交，下次打开页面系统会自动补填。</div><h3>记录一笔溢价套利</h3><p>1. 选择「溢价套利（卖+申）」模式</p><p>2. 填入<strong>场内卖出价格</strong>和<strong>份额</strong></p><p>3. 点「计算建议金额」自动填入申购金额，也可手动修改</p><p>4. 获取净值后预览收益，确认提交</p><h3>首页怎么看</h3><p><strong>绿色大数字</strong>：当前可操作份额（持有已满 N 天）</p><p><strong>套利收益 / 调整收益</strong>：红色 = 赚钱，绿色 = 亏钱</p><p><strong>橙色数字</strong>：锁定份额（未满 N 天，暂不可操作）</p><p><strong>解锁时间线</strong>：每批份额的解锁日期和剩余天数</p><p><strong>持仓调整仓位</strong>：当前未平仓的做多/做空仓位，红色=做多，绿色=做空</p><h3>明细和筛选</h3><p>上方两行筛选栏可按<strong>基金</strong>和<strong>账户</strong>组合筛选。</p><p>每条记录可编辑、删除，未填净值的记录有「填净值」按钮。</p><p>不对等操作标记为「净增」「净减」，收益只计算匹配部分。</p><h3>净值获取</h3><table><tr><th>按钮</th><th>说明</th></tr><tr><td>获取当日净值</td><td>优先获取实际净值，获取不到时使用估算值（会标记 ⚠）</td></tr><tr><td>按日期获取</td><td>查询指定日期的历史实际净值，适合补录旧记录</td></tr></table><div class="hi">估算净值可能与实际净值有偏差，建议以实际净值为准。非交易日无法获取净值。</div><h3>数据安全</h3><p>所有数据存在浏览器本地，<strong>清除浏览器数据会丢失记录</strong>。</p><p>建议定期：设置 → 导出数据 → 保存 JSON 文件。</p></div>')
