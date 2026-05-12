@@ -145,7 +145,7 @@ select.rf-in{appearance:none;-webkit-appearance:none;background-image:url("data:
 <body>
 <div class="app">
   <div class="header">
-    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v6.11</span></div></div>
+    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v6.2</span></div></div>
     <div class="summary-bar" id="sumBar"></div>
   </div>
   <nav class="tab-bar" id="tabBar">
@@ -216,31 +216,35 @@ function updateFundNav(fc,nav){
 function rebuildAdj(){
   D.adjPositions=[];
   D.fundAdjRealized={};
+  D.txs.forEach(function(t){t._adjRealized=0});
   var sorted=D.txs.slice().sort(function(a,b){return(a.date+a.time).localeCompare(b.date+b.time)});
   sorted.forEach(function(t){
     var f=getFund(t.fundCode);if(!f)return;
     if(t.redeemNav>0)updateFundNav(t.fundCode,t.redeemNav);
     if(t.subscribeNav>0)updateFundNav(t.fundCode,t.subscribeNav);
+    var before=D.fundAdjRealized[t.fundCode]||0;
     if(t.mode==='discount'){
       var diff=t.buyShares-t.redeemShares;
       if(Math.abs(diff)>1){
         if(diff>0)applyAdj(t.fundCode,Math.abs(diff),t.buyPrice,'long');
         else if(t.redeemNav>0)applyAdj(t.fundCode,Math.abs(diff),t.redeemNav,'short');
       }
-    }
-else{
+    }else{
       if(t.subscribeNav>0&&t.subscribeAmount>0&&t.sellShares>0){
         var ai=t.subscribeAmount/(1+f.subFeeRate);
         var sr=ai/t.subscribeNav;
         var extra=sr-t.sellShares;
-      if(Math.abs(extra)>1){
-        if(extra>0)applyAdj(t.fundCode,Math.abs(extra),t.subscribeNav,'long');
-        else applyAdj(t.fundCode,Math.abs(extra),t.sellPrice,'short');
-      }
+        if(Math.abs(extra)>1){
+          if(extra>0)applyAdj(t.fundCode,Math.abs(extra),t.subscribeNav,'long');
+          else applyAdj(t.fundCode,Math.abs(extra),t.sellPrice,'short');
+        }
       }
     }
+    var after=D.fundAdjRealized[t.fundCode]||0;
+    t._adjRealized=after-before;
   });
 }
+
 
 function applyAdj(fc,sharesDelta,price,direction){
   if(Math.abs(sharesDelta)<1)return;
@@ -444,7 +448,7 @@ function rDash(){
     html+='<div class="fc">';
     html+='<div class="fc-hd"><div><div class="fc-code">'+f.code+'</div><div class="fc-name">'+f.name+'</div></div><div class="fc-tag">'+f.holdDays+'天 · '+(f.redeemFeeRate*100).toFixed(1)+'%</div></div>';
     html+='<div class="fc-row"><span class="fc-avail">'+fmtI(av)+'</span><span class="fc-avail-l">可操作份额</span></div>';
-    html+='<div class="fc-pnl2"><div class="fc-pnl2-item"><div class="fc-pnl2-v" style="color:'+(arb>=0?'var(--red)':'var(--green)')+'">'+pnlSign(arb)+'¥'+fmtM(arb)+'</div><div class="fc-pnl2-l">套利收益</div></div><div class="fc-pnl2-item"><div class="fc-pnl2-v" style="color:'+(adj>=0?'var(--red)':'var(--green)')+'">'+pnlSign(adj)+'¥'+fmtM(adj)+'</div><div class="fc-pnl2-l">调整收益</div></div></div>';
+    html+='<div class="fc-pnl2"><div class="fc-pnl2-item" onclick="goHist(\''+f.code+'\',\'all\')" style="cursor:pointer"><div class="fc-pnl2-v" style="color:'+(arb>=0?'var(--red)':'var(--green)')+'">'+pnlSign(arb)+'¥'+fmtM(arb)+'</div><div class="fc-pnl2-l">套利收益</div></div><div class="fc-pnl2-item" onclick="goHist(\''+f.code+'\',\'adj\')" style="cursor:pointer"><div class="fc-pnl2-v" style="color:'+(adj>=0?'var(--red)':'var(--green)')+'">'+pnlSign(adj)+'¥'+fmtM(adj)+'</div><div class="fc-pnl2-l">调整收益 ›</div></div></div>';
     html+='<div class="fc-stats"><div class="fc-st"><div class="fc-st-v">'+fmtI(ttl)+'</div><div class="fc-st-l">总持仓</div></div><div class="fc-st"><div class="fc-st-v" style="color:var(--orange)">'+fmtI(lk)+'</div><div class="fc-st-l">锁定</div></div><div class="fc-st"><div class="fc-st-v">'+accCount+'</div><div class="fc-st-l">账户</div></div></div>';
     if(tlR)html+='<div class="fc-tl"><div class="fc-tl-t">解锁时间线</div>'+tlR+'</div>';
     if(adjInfo)html+='<div class="fc-tl"><div class="fc-tl-t">持仓调整仓位</div>'+adjInfo+'</div>';
@@ -453,6 +457,13 @@ function rDash(){
     html+='</div>';
   }
   el.innerHTML=html;
+}
+function goHist(fc,type){
+  histF=fc||'all';
+  histType=type||'all';
+  histAcc='all';
+  document.querySelector('[data-t="hist"]').click();
+  setTimeout(function(){rHist()},100);
 }
 
 function goRec(c,m){document.querySelector('[data-t="rec"]').click();setTimeout(function(){recMode=m;rRec();var sel=document.getElementById('rFund');if(sel){sel.value=c;sel.dispatchEvent(new Event('change'))};window.scrollTo(0,0)},150)}
@@ -643,17 +654,32 @@ function submitTx(){
 }
 
 
-var histF='all',histAcc='all';
+var histF='all',histAcc='all',histType='all';
 function rHist(){
   var el=document.getElementById('pHist');
   if(!D.txs.length){el.innerHTML='<div class="empty"><div class="empty-i">📋</div><div class="empty-t">暂无记录</div><div class="empty-d">完成操作后记录将在此显示</div></div>';return}
   var funds=[{code:'all',name:'全部'}].concat(D.funds);
   var accs=[{id:'all',name:'全部'}].concat(D.accounts);
+  var types=[{v:'all',l:'全部'},{v:'disc',l:'折价'},{v:'prem',l:'溢价'},{v:'adj',l:'调整仓位'}];
   var fCh='';funds.forEach(function(f){fCh+='<span class="h-chip '+(histF===f.code?'active':'')+'" onclick="histF=\''+f.code+'\';rHist()">'+(f.name||f.code)+'</span>'});
   var aCh='';accs.forEach(function(a){aCh+='<span class="h-chip '+(histAcc===a.id?'active':'')+'" onclick="histAcc=\''+a.id+'\';rHist()">'+a.name+'</span>'});
-  var txs=D.txs.filter(function(t){return(histF==='all'||t.fundCode===histF)&&(histAcc==='all'||t.accountId===histAcc)}).sort(function(a,b){return(b.date+b.time).localeCompare(a.date+a.time)});
-  if(!txs.length){el.innerHTML='<div class="h-filter">'+fCh+'</div><div class="h-filter">'+aCh+'</div><div class="empty"><div class="empty-i">📋</div><div class="empty-t">该筛选条件下无记录</div></div>';return}
-  var html='<div class="h-filter">'+fCh+'</div><div class="h-filter">'+aCh+'</div>';
+  var tCh='';types.forEach(function(t){tCh+='<span class="h-chip '+(histType===t.v?'active':'')+'" onclick="histType=\''+t.v+'\';rHist()">'+t.l+'</span>'});
+  var txs=D.txs.filter(function(t){
+    if(histF!=='all'&&t.fundCode!==histF)return false;
+    if(histAcc!=='all'&&t.accountId!==histAcc)return false;
+    if(histType==='disc'&&t.mode!=='discount')return false;
+    if(histType==='prem'&&t.mode!=='premium')return false;
+    if(histType==='adj'){
+      var net=0;
+      if(t.mode==='discount')net=t.buyShares-t.redeemShares;
+      else{var g3=t.subscribeNav>0?sharesFromSub(t):0;net=g3-t.sellShares}
+      var hasRealized=t._adjRealized&&Math.abs(t._adjRealized)>0.01;
+      if(Math.abs(net)<1&&!hasRealized)return false;
+    }
+    return true;
+  }).sort(function(a,b){return(b.date+b.time).localeCompare(a.date+a.time)});
+  if(!txs.length){el.innerHTML='<div class="h-filter">'+fCh+'</div><div class="h-filter">'+aCh+'</div><div class="h-filter">'+tCh+'</div><div class="empty"><div class="empty-i">📋</div><div class="empty-t">该筛选条件下无记录</div></div>';return}
+  var html='<div class="h-filter">'+fCh+'</div><div class="h-filter">'+aCh+'</div><div class="h-filter">'+tCh+'</div>';
   var cr=commRate();
   txs.forEach(function(t){
     var f=getFund(t.fundCode),a=getAcc(t.accountId);
@@ -672,6 +698,29 @@ function rHist(){
     if(matched>0&&hasNav)arbH='<span class="h-pnl '+pnlCls(arbPnl)+'">'+pnlSign(arbPnl)+'¥'+fmtM(arbPnl)+' <span style="font-size:.65rem;font-weight:400;opacity:.7">('+pnlSign(arbRate)+Math.abs(arbRate).toFixed(2)+'%)</span></span>';
     else if(matched===0&&hasNav)arbH='<span class="h-pnl" style="color:var(--mut)">0套利</span>';
     else arbH='<span class="h-pnl na">待净值</span>';
+
+    var netDiff=0;
+    if(t.mode==='discount')netDiff=t.buyShares-t.redeemShares;
+    else{var g22=t.subscribeNav>0?sharesFromSub(t):0;netDiff=g22-t.sellShares}
+    var adjUnreal=null;
+    var navNow=D.fundLastNav[t.fundCode];
+    if(Math.abs(netDiff)>1&&navNow>0){
+      if(netDiff>0){var cost=t.mode==='discount'?t.buyPrice:t.subscribeNav;if(cost>0)adjUnreal=(navNow-cost)*Math.abs(netDiff)}
+      else{var ref=t.mode==='discount'?(t.redeemNav>0?t.redeemNav:0):t.sellPrice;if(ref>0)adjUnreal=(ref-navNow)*Math.abs(netDiff)}
+    }
+    var adjReal=t._adjRealized||0;
+
+    var pnlRight=arbH;
+    if(adjReal!==0||adjUnreal!==null){
+      pnlRight+='<div style="font-family:var(--fM);font-size:.68rem;font-weight:400;margin-top:2px">';
+      if(adjReal!==0)pnlRight+='<span style="color:'+(adjReal>=0?'var(--red)':'var(--green)')+'">已'+pnlSign(adjReal)+'¥'+fmtM(adjReal)+'</span>';
+      if(adjUnreal!==null){
+        if(adjReal!==0)pnlRight+=' <span style="color:var(--mut)">/</span> ';
+        pnlRight+='<span style="color:'+(adjUnreal>=0?'var(--red)':'var(--green)')+'">浮'+pnlSign(adjUnreal)+'¥'+fmtM(adjUnreal)+'</span>';
+      }
+      pnlRight+='</div>';
+    }
+
     var tag='';
     if(t.mode==='discount'){
       if(t.buyShares>0&&t.redeemShares>0&&Math.abs(t.buyShares-t.redeemShares)<1){tag='<span class="h-tag disc">折价</span>'}
@@ -687,6 +736,7 @@ function rHist(){
       else if(t.sellShares>0){tag='<span class="h-tag prem">溢价 <span style="color:var(--mut)">未申购</span></span>'}
       else{tag='<span class="h-tag prem">溢价 <span style="color:var(--red)">纯申购</span></span>'}
     }
+
     var rows='<div class="h-row"><span>日期</span><span>'+fmtD(t.date)+'</span></div>';
     if(a)rows+='<div class="h-row"><span>账户</span><span style="color:var(--accent);font-weight:500">'+a.name+'</span></div>';
     if(t.mode==='discount'){
@@ -701,10 +751,11 @@ function rHist(){
       if(t.subscribeNav>0){var sh=sharesFromSub(t);rows+='<div class="h-row"><span>获得份额</span><span>'+fmtI(sh)+' 份 (多 '+fmtI(sh-t.sellShares)+')</span></div>'}
     }
     if(t.note)rows+='<div class="h-row"><span>备注</span><span>'+t.note+'</span></div>';
-    html+='<div class="h-card"><div class="h-top"><div class="h-fund">'+t.fundCode+' '+(f?f.name:'')+' '+tag+'</div>'+arbH+'</div>'+rows+'<div class="h-acts">'+((t.mode==='discount'&&!t.redeemNav)||(t.mode==='premium'&&!t.subscribeNav)?'<button class="h-act" onclick="fillNavTx(\''+t.id+'\')">填净值</button>':'')+'<button class="h-act" onclick="editTx(\''+t.id+'\')">编辑</button><button class="h-act danger" onclick="delTx(\''+t.id+'\')">删除</button></div></div>';
+    html+='<div class="h-card"><div class="h-top"><div class="h-fund">'+t.fundCode+' '+(f?f.name:'')+' '+tag+'</div><div style="text-align:right">'+pnlRight+'</div></div>'+rows+'<div class="h-acts">'+((t.mode==='discount'&&!t.redeemNav)||(t.mode==='premium'&&!t.subscribeNav)?'<button class="h-act" onclick="fillNavTx(\''+t.id+'\')">填净值</button>':'')+'<button class="h-act" onclick="editTx(\''+t.id+'\')">编辑</button><button class="h-act danger" onclick="delTx(\''+t.id+'\')">删除</button></div></div>';
   });
   el.innerHTML=html;
 }
+
 
 function fillNavTx(id){
   var tx=D.txs.find(function(t){return t.id===id});if(!tx)return;
