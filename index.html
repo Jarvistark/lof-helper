@@ -165,7 +165,8 @@ select.rf-in{appearance:none;-webkit-appearance:none;background-image:url("data:
 <div class="cfm" id="cfm"><div class="cfm-box"><div class="cfm-msg" id="cfmMsg"></div><div class="cfm-btns"><button class="cb-n" onclick="closeCfm()">取消</button><button class="cb-y" id="cfmOk">确认</button></div></div></div>
 <div class="toast" id="toast"></div>
 <script>
-try{delete window.fundNavAllYearData}catch(e){}
+try{Object.defineProperty(window,'fundNavAllYearData',{value:undefined,configurable:true,writable:true,enumerable:true})}catch(e){}
+
 var SK='lof_v6';
 function ld(){
   try{
@@ -355,14 +356,14 @@ function activeFunds(){
 function fetchHistNav(code,date){
   var target=date.replace(/-/g,'');
   return new Promise(function(resolve,reject){
-    window.fundNavAllYearData=null;
+    window._lofNavBuf=null;
     var s=document.createElement('script');
     s.src='https://stockjs.finance.qq.com/fundUnitNavAll/data/year_all/'+code+'.js?_t='+Date.now();
     var done=false;
     var timer=setTimeout(function(){if(!done){done=true;s.remove();reject('超时')}},8000);
     s.onload=function(){setTimeout(function(){
       if(done)return;done=true;clearTimeout(timer);s.remove();
-      var raw=window.fundNavAllYearData;window.fundNavAllYearData=null;
+      var raw=window._lofNavBuf;window._lofNavBuf=null;
       if(!raw){reject('未获取到数据');return}
       var arr=null;
       if(Array.isArray(raw)){arr=raw}
