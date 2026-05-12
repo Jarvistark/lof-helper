@@ -145,7 +145,7 @@ select.rf-in{appearance:none;-webkit-appearance:none;background-image:url("data:
 <body>
 <div class="app">
   <div class="header">
-    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v6.1</span></div></div>
+    <div class="header-top"><div class="app-title">LOF <span>套利</span></div><div class="header-date"><span id="hDate"></span> <span style="opacity:.3;">·</span> <span style="opacity:.3;">v6.11</span></div></div>
     <div class="summary-bar" id="sumBar"></div>
   </div>
   <nav class="tab-bar" id="tabBar">
@@ -827,11 +827,15 @@ setTimeout(function(){
 setTimeout(function(){
   var adjFunds={};
   D.adjPositions.forEach(function(p){adjFunds[p.fundCode]=true});
-  Object.keys(adjFunds).forEach(function(fc,i){
-    setTimeout(function(){
-      fetchRTNav(fc).then(function(){sv()}).catch(function(){});
-    },i*2000);
-  });
+  var keys=Object.keys(adjFunds);
+  if(!keys.length)return;
+  var idx=0,updated=false;
+  function fetchNext(){
+    if(idx>=keys.length){if(updated){sv();render();showToast('净值已更新')}return}
+    var fc=keys[idx++];
+    fetchRTNav(fc).then(function(){updated=true}).catch(function(){}).then(function(){setTimeout(fetchNext,1500)})
+  }
+  fetchNext();
 },8000);
 
 function showHelp(){
